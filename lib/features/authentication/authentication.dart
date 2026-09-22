@@ -11,9 +11,4 @@ library;
 /// Candidate unlock methods, derived from the S Secure feature model
 /// (documented in docs/FORENSIC-ANALYSIS.md). Reference only; selecting one has
 /// no effect yet.
-enum LockMethod {
-  pin,
-  password,
-  pattern,
-  biometric,
-}
+enum LockMethod { pin, password, pattern, biometric }

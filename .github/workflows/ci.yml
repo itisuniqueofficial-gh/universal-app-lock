@@ -39,13 +39,13 @@ jobs:
       - run: flutter pub get
       - name: Dart format check
         run: |
-          dart format .
-          if ! git diff --quiet; then
-            echo "::error::Code is not formatted with 'dart format'. Diff below:"
-            git --no-pager diff
+          dart format lib test
+          if ! git diff --quiet -- '*.dart'; then
+            echo "::error::Dart code is not formatted with 'dart format'. Diff below:"
+            git --no-pager diff -- '*.dart'
             exit 1
           fi
-          echo "OK: code is formatted."
+          echo "OK: Dart code is formatted."
       - name: Static analysis
         run: flutter analyze
       - name: Unit & widget tests

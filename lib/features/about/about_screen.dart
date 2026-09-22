@@ -29,10 +29,7 @@ class AboutScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  AppInfo.packageId,
-                  style: theme.textTheme.bodySmall,
-                ),
+                Text(AppInfo.packageId, style: theme.textTheme.bodySmall),
               ],
             ),
           ),

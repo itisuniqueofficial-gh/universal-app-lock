@@ -11,13 +11,11 @@ import '../channels/platform_channels.dart';
 /// operation. Security-critical functionality lives natively (Kotlin) and will
 /// be surfaced through explicitly named methods in later phases.
 class PlatformService {
-  PlatformService({
-    MethodChannel? methodChannel,
-    EventChannel? eventChannel,
-  })  : _method =
-            methodChannel ?? const MethodChannel(PlatformChannels.methodChannel),
-        _events =
-            eventChannel ?? const EventChannel(PlatformChannels.eventChannel);
+  PlatformService({MethodChannel? methodChannel, EventChannel? eventChannel})
+    : _method =
+          methodChannel ?? const MethodChannel(PlatformChannels.methodChannel),
+      _events =
+          eventChannel ?? const EventChannel(PlatformChannels.eventChannel);
 
   final MethodChannel _method;
   final EventChannel _events;
@@ -43,9 +41,9 @@ class PlatformService {
   /// A stream of harmless diagnostic events from the native side (currently a
   /// single "ready" capability event on listen). No sensitive data is emitted.
   Stream<Map<dynamic, dynamic>> events() {
-    return _events
-        .receiveBroadcastStream()
-        .map((event) => (event as Map).cast<dynamic, dynamic>());
+    return _events.receiveBroadcastStream().map(
+      (event) => (event as Map).cast<dynamic, dynamic>(),
+    );
   }
 
   Future<T> _invoke<T>(String method) async {
@@ -61,10 +59,7 @@ class PlatformService {
         cause: e,
       );
     } on PlatformException catch (e) {
-      throw PlatformBridgeException(
-        'Native call "$method" failed',
-        cause: e,
-      );
+      throw PlatformBridgeException('Native call "$method" failed', cause: e);
     }
   }
 }

@@ -19,7 +19,9 @@ class SettingsScreen extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.info_outline_rounded),
             title: Text('Settings are not implemented yet'),
-            subtitle: Text('Lock policy and preferences arrive in a later phase.'),
+            subtitle: Text(
+              'Lock policy and preferences arrive in a later phase.',
+            ),
           ),
           const Divider(),
           ListTile(
