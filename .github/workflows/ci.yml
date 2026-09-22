@@ -1,8 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  # Pull requests are gated by CI. Pushes to main are handled by
+  # every-commit-release.yml (which runs the same validation/quality gates
+  # before building and publishing a prerelease).
   pull_request:
 
 # Least-privilege by default.

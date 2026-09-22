@@ -10,7 +10,7 @@ on:
         required: true
         type: string
 
-# Needed to create the GitHub Release and tag.
+# Only what is needed to publish a production release.
 permissions:
   contents: write
 
@@ -20,10 +20,11 @@ concurrency:
 
 jobs:
   release:
-    name: Build, sign & publish release
+    name: Build, sign & publish production release
     runs-on: ubuntu-latest
-    # Production signing credentials live in this protected environment.
     environment: production
+    env:
+      CHANNEL: release
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,37 +44,38 @@ jobs:
             input_version="${{ inputs.version }}"
             tag="v${input_version}"
           fi
-          echo "VERSION file: $file_version / requested: $input_version / tag: $tag"
           if [[ "$input_version" != "$file_version" ]]; then
-            echo "::error::Requested version ($input_version) does not match VERSION file ($file_version). Update VERSION and commit first."
+            echo "::error::Requested version ($input_version) does not match VERSION file ($file_version)."
             exit 1
           fi
-          # Fail if a release for this tag already exists (never overwrite).
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "::error::A GitHub Release for $tag already exists. Refusing to overwrite."
             exit 1
           fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          CHANNEL=release bash scripts/version/compute_version.sh VERSION
+          bash scripts/version/compute_version.sh VERSION
 
       - uses: ./.github/actions/setup
 
       - run: flutter pub get
 
-      - name: Validate repository
+      - name: Repository validation
         run: |
           bash scripts/validation/check_app_id.sh
           bash scripts/validation/check_permissions.sh
           bash scripts/validation/check_branding.sh
           bash scripts/validation/check_no_binaries.sh
 
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
-
-      - name: Analyze & test
+      - name: Format, analyze & test
         run: |
+          dart format lib test
+          if ! git diff --quiet -- '*.dart'; then
+            echo "::error::Dart code is not formatted."; git --no-pager diff -- '*.dart'; exit 1
+          fi
           flutter analyze
           flutter test
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Decode signing keystore
         env:
@@ -81,13 +83,13 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
-            echo "::error::Missing secret ANDROID_KEYSTORE_BASE64. Configure production signing secrets (see docs/DEVELOPMENT.md). Failing safely without publishing."
+            echo "::error::Missing secret ANDROID_KEYSTORE_BASE64. Configure production signing (docs/DEVELOPMENT.md). Failing safely."
             exit 1
           fi
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           echo "keystore decoded"
 
-      - name: Build signed release APK & AAB
+      - name: Build signed APKs (universal + per-ABI) and AAB
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -95,49 +97,80 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          flutter build apk --release \
-            --build-name=${{ steps.ver.outputs.version_name }} \
-            --build-number=${{ steps.ver.outputs.version_code }}
-          flutter build appbundle --release \
-            --build-name=${{ steps.ver.outputs.version_name }} \
-            --build-number=${{ steps.ver.outputs.version_code }}
+          VN='${{ steps.ver.outputs.version_name }}'
+          VC='${{ steps.ver.outputs.version_code }}'
+          flutter build apk --release --build-name="$VN" --build-number="$VC"
+          flutter build apk --release --split-per-abi --build-name="$VN" --build-number="$VC"
+          flutter build appbundle --release --build-name="$VN" --build-number="$VC"
 
-      - name: Verify APK application ID
-        run: bash scripts/validation/verify_apk.sh build/app/outputs/flutter-apk/app-release.apk com.itisuniqueofficial.ual
-
-      - name: Stage release assets
+      - name: Stage & name assets
         id: stage
         run: |
           set -euo pipefail
-          v="${{ steps.ver.outputs.version }}"
+          base="Universal-App-Lock-v${{ steps.ver.outputs.version }}"
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/Universal-App-Lock-v${v}.apk"
-          cp build/app/outputs/bundle/release/app-release.aab "dist/Universal-App-Lock-v${v}.aab"
-          bash scripts/release/checksums.sh dist/SHA256SUMS.txt \
-            "dist/Universal-App-Lock-v${v}.apk" \
-            "dist/Universal-App-Lock-v${v}.aab"
+          apk=build/app/outputs/flutter-apk
+          cp "$apk/app-release.apk" "dist/${base}-universal.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            if [[ -f "$apk/app-${abi}-release.apk" ]]; then
+              cp "$apk/app-${abi}-release.apk" "dist/${base}-${abi}.apk"
+            fi
+          done
+          cp build/app/outputs/bundle/release/app-release.aab "dist/${base}.aab"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          ls -la dist
+
+      - name: Verify APK application ID
+        run: bash scripts/validation/verify_apk.sh "dist/${{ steps.stage.outputs.base }}-universal.apk" com.itisuniqueofficial.ual
+
+      - name: Verify production signatures (required)
+        run: |
+          set -euo pipefail
+          for f in dist/*.apk dist/*.aab; do
+            bash scripts/release/verify_signing.sh "$f"
+          done
+
+      - name: Generate build metadata
+        env:
+          OUT: dist/build-info.json
+          BASE_VERSION: ${{ steps.ver.outputs.version }}
+          VERSION_NAME: ${{ steps.ver.outputs.version_name }}
+          VERSION_CODE: ${{ steps.ver.outputs.version_code }}
+          COMMIT: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          WORKFLOW: ${{ github.workflow }}
+          SIGNED: "true"
+          BUILD_STATUS: success
+        run: bash scripts/release/build_info.sh
 
       - name: Generate changelog & release notes
         run: |
           set -euo pipefail
-          bash scripts/changelog/generate_changelog.sh --out dist/CHANGELOG_SNIPPET.md
+          bash scripts/changelog/generate_changelog.sh --out dist/CHANGELOG.md
           bash scripts/release/make_release_notes.sh "${{ steps.ver.outputs.version }}" \
-            --changelog dist/CHANGELOG_SNIPPET.md \
+            --changelog dist/CHANGELOG.md \
             --out dist/RELEASE_NOTES.md
+
+      - name: Generate checksums
+        run: bash scripts/release/checksums.sh dist/SHA256SUMS.txt dist/*.apk dist/*.aab dist/build-info.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          name: Universal App Lock v${{ steps.ver.outputs.version }}
+          tag_name: ${{ steps.ver.outputs.release_tag }}
+          name: ${{ steps.ver.outputs.release_name }}
           body_path: dist/RELEASE_NOTES.md
           draft: false
           prerelease: false
+          make_latest: true
           fail_on_unmatched_files: true
           files: |
-            dist/Universal-App-Lock-v${{ steps.ver.outputs.version }}.apk
-            dist/Universal-App-Lock-v${{ steps.ver.outputs.version }}.aab
+            dist/*.apk
+            dist/*.aab
             dist/SHA256SUMS.txt
+            dist/CHANGELOG.md
+            dist/build-info.json
 
       - name: Clean up signing material
         if: always()

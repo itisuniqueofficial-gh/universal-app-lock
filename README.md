@@ -1,8 +1,10 @@
 # Universal App Lock
 
 [![CI](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/ci.yml/badge.svg)](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/ci.yml)
+[![Every-Commit Release](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/every-commit-release.yml/badge.svg)](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/every-commit-release.yml)
 [![Security](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/security.yml/badge.svg)](https://github.com/itisuniqueofficial-gh/universal-app-lock/actions/workflows/security.yml)
-[![Release](https://img.shields.io/github/v/release/itisuniqueofficial-gh/universal-app-lock?sort=semver)](https://github.com/itisuniqueofficial-gh/universal-app-lock/releases)
+[![Release](https://img.shields.io/github/v/release/itisuniqueofficial-gh/universal-app-lock?sort=semver)](https://github.com/itisuniqueofficial-gh/universal-app-lock/releases/latest)
+[![Latest build](https://img.shields.io/github/v/release/itisuniqueofficial-gh/universal-app-lock?include_prereleases&label=latest%20build)](https://github.com/itisuniqueofficial-gh/universal-app-lock/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-02569B?logo=flutter)](https://flutter.dev)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 
@@ -98,6 +100,23 @@ flutter build apk --debug
 # install on a connected device:
 adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
+
+## Downloads & releases
+
+Builds are produced entirely by GitHub Actions — no local build is required.
+
+- **Every push to `main`** publishes a signed-for-testing **prerelease** (universal +
+  per-ABI APKs, AAB, checksums, changelog, build metadata) with a unique
+  `build-v<version>-<run>` tag.
+- **Pushing a `v<X.Y.Z>` tag** publishes a **production** release signed with the
+  production key.
+
+Get artifacts:
+- Latest stable: https://github.com/itisuniqueofficial-gh/universal-app-lock/releases/latest
+- All builds (incl. prereleases): https://github.com/itisuniqueofficial-gh/universal-app-lock/releases
+
+See [`docs/RELEASES.md`](docs/RELEASES.md) for the versioning model and asset naming, and
+[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for the release/signing workflow.
 
 ## Credits & attribution
 

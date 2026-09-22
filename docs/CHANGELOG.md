@@ -18,6 +18,14 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 - Platform bridge v2 (discovery + permission methods) with background execution.
 
 ### CI/CD
+- Every-commit release pipeline: each push to `main` builds APK (universal + per-ABI) and
+  AAB, verifies package ID and signatures, generates checksums, changelog, and build
+  metadata, and publishes a unique GitHub **prerelease** (`build-v<version>-<run>`).
+- Production `release.yml` enhanced: signed universal + per-ABI APKs and AAB, signing
+  verification, `build-info.json`, and full release assets on `v*.*.*` tags.
+- Added `verify_signing.sh`, `build_info.sh`, `commit_release_notes.sh`; extended
+  `compute_version.sh` (RELEASE_TAG/RELEASE_NAME per channel). CI scoped to PRs; `build.yml`
+  made dispatch-only to avoid redundant main builds.
 - GitHub-first CI/CD foundation: CI, pull-request, build, release, nightly, and
   security workflows; versioning, changelog, icon, and validation scripts.
 
