@@ -1,0 +1,74 @@
+name: Nightly
+
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    name: Nightly debug build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if no commits in the last 24h (scheduled runs only)
+        id: guard
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            if [[ -z "$(git log --since='24 hours ago' --oneline)" ]]; then
+              echo "No commits in the last 24h; skipping build."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: ./.github/actions/setup
+        if: steps.guard.outputs.skip != 'true'
+
+      - name: Compute version (nightly channel)
+        id: ver
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          CHANNEL: nightly
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: bash scripts/version/compute_version.sh VERSION
+
+      - if: steps.guard.outputs.skip != 'true'
+        run: flutter pub get
+
+      - name: Generate launcher icons
+        if: steps.guard.outputs.skip != 'true'
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze & test
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build debug APK
+        if: steps.guard.outputs.skip != 'true'
+        run: >-
+          flutter build apk --debug
+          --build-name=${{ steps.ver.outputs.version_name }}
+          --build-number=${{ steps.ver.outputs.version_code }}
+
+      - name: Upload nightly APK artifact
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-app-lock-nightly-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+          if-no-files-found: error

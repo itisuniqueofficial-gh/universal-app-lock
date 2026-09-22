@@ -1,0 +1,31 @@
+name: Pull Request
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-hygiene:
+    name: PR hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No committed binaries/secrets
+        run: bash scripts/validation/check_no_binaries.sh
+
+      - name: Conventional PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "PR title: $PR_TITLE"
+          if ! printf '%s' "$PR_TITLE" | grep -Eq '^(feat|fix|docs|refactor|perf|test|build|ci|security|chore)(\([^)]+\))?(!)?: .+'; then
+            echo "::error::PR title must follow Conventional Commits, e.g. 'feat: add lock overlay' or 'fix(auth): correct PIN check'."
+            exit 1
+          fi
+          echo "OK: PR title follows Conventional Commits."
