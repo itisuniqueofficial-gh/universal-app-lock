@@ -1,0 +1,55 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1" # weekly, Monday 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repo-hardening:
+    name: Repository hardening checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No committed binaries/keystores/private keys
+        run: bash scripts/validation/check_no_binaries.sh
+
+      - name: Forbidden privileged permissions
+        run: bash scripts/validation/check_permissions.sh
+
+      - name: Scan for hardcoded secrets (heuristic)
+        run: |
+          set -euo pipefail
+          # Heuristic scan of tracked files for obvious secret material. This is a
+          # lightweight backstop; enable GitHub secret scanning + push protection
+          # (a one-time repo setting) for authoritative coverage.
+          patterns='AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|ghp_[0-9A-Za-z]{36}|xox[baprs]-[0-9A-Za-z-]+'
+          if git grep -InE "$patterns" -- . ':(exclude).github/workflows/security.yml' >/dev/null 2>&1; then
+            echo "::error::Potential hardcoded secret detected:"
+            git grep -InE "$patterns" -- . ':(exclude).github/workflows/security.yml' || true
+            exit 1
+          fi
+          echo "OK: no obvious hardcoded secrets found."
+
+  dependency-review:
+    name: Dependency review (informational)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        # Informational: GitHub's dependency graph does not fully support pub;
+        # do not block PRs on tooling limitations.
+        continue-on-error: true
+        with:
+          fail-on-severity: high

@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least-privilege by default.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Repository validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Application ID
+        run: bash scripts/validation/check_app_id.sh
+      - name: Forbidden permissions
+        run: bash scripts/validation/check_permissions.sh
+      - name: Branding
+        run: bash scripts/validation/check_branding.sh
+      - name: No committed binaries/secrets
+        run: bash scripts/validation/check_no_binaries.sh
+      - name: Version metadata
+        run: bash scripts/version/compute_version.sh VERSION
+
+  quality:
+    name: Format, analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: flutter pub get
+      - name: Dart format check
+        run: |
+          dart format .
+          if ! git diff --quiet; then
+            echo "::error::Code is not formatted with 'dart format'. Diff below:"
+            git --no-pager diff
+            exit 1
+          fi
+          echo "OK: code is formatted."
+      - name: Static analysis
+        run: flutter analyze
+      - name: Unit & widget tests
+        run: flutter test
+
+  android-build:
+    name: Android debug compilation
+    needs: [validate, quality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: flutter pub get
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+      - name: Build debug APK
+        run: flutter build apk --debug
+      - name: Verify APK application ID
+        run: bash scripts/validation/verify_apk.sh build/app/outputs/flutter-apk/app-debug.apk com.itisuniqueofficial.ual
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+          if-no-files-found: error

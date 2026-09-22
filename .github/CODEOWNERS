@@ -1,0 +1,17 @@
+# Code owners for Universal App Lock.
+# These owners are requested for review on matching changes.
+
+# Default owner for everything.
+*                           @iamjaydatt2006
+
+# Protected, human-reviewed documentation (must not be auto-overwritten).
+/docs/ARCHITECTURE.md       @iamjaydatt2006
+/docs/SECURITY.md           @iamjaydatt2006
+/docs/FORENSIC-ANALYSIS.md  @iamjaydatt2006
+/docs/DEVELOPMENT.md        @iamjaydatt2006
+/docs/CREDITS.md            @iamjaydatt2006
+
+# CI/CD, signing, and security-critical configuration.
+/.github/                   @iamjaydatt2006
+/scripts/                   @iamjaydatt2006
+/android/app/build.gradle.kts  @iamjaydatt2006

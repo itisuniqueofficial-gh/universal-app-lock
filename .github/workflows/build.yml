@@ -1,0 +1,79 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_aab:
+        description: "Also build an (unsigned) AAB"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build development artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Compute version (dev channel)
+        id: ver
+        env:
+          CHANNEL: dev
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: bash scripts/version/compute_version.sh VERSION
+
+      - run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze & test
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build debug APK
+        run: >-
+          flutter build apk --debug
+          --build-name=${{ steps.ver.outputs.version_name }}
+          --build-number=${{ steps.ver.outputs.version_code }}
+
+      - name: Verify APK application ID
+        run: bash scripts/validation/verify_apk.sh build/app/outputs/flutter-apk/app-debug.apk com.itisuniqueofficial.ual
+
+      - name: Build unsigned AAB (optional)
+        if: ${{ inputs.build_aab }}
+        run: >-
+          flutter build appbundle --debug
+          --build-name=${{ steps.ver.outputs.version_name }}
+          --build-number=${{ steps.ver.outputs.version_code }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-app-lock-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload AAB artifact
+        if: ${{ inputs.build_aab }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-app-lock-debug-aab
+          path: build/app/outputs/bundle/debug/app-debug.aab
+          retention-days: 14
+          if-no-files-found: error

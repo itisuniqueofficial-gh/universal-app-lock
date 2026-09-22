@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability (private)
+    url: https://github.com/itisuniqueofficial-gh/universal-app-lock/security/policy
+    about: Please do NOT open a public issue for security vulnerabilities. See our Security Policy for responsible disclosure.
+  - name: Project website
+    url: https://ual.itisuniqueofficial.com/
+    about: General information about Universal App Lock.

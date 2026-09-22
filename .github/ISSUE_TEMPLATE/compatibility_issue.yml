@@ -1,0 +1,25 @@
+name: 📱 Compatibility Issue
+description: Report a device- or Android-version-specific problem
+title: "compat: "
+labels: ["compatibility", "triage"]
+body:
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+      placeholder: e.g. Samsung Galaxy S21, Pixel 6a
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version / One UI (if applicable)
+      placeholder: e.g. Android 13
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What works differently or fails on this device?
+    validations:
+      required: true

@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (must match the VERSION file, e.g. 1.0.0)"
+        required: true
+        type: string
+
+# Needed to create the GitHub Release and tag.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign & publish release
+    runs-on: ubuntu-latest
+    # Production signing credentials live in this protected environment.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve & validate version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          file_version="$(tr -d ' \t\n\r' < VERSION)"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            input_version="${tag#v}"
+          else
+            input_version="${{ inputs.version }}"
+            tag="v${input_version}"
+          fi
+          echo "VERSION file: $file_version / requested: $input_version / tag: $tag"
+          if [[ "$input_version" != "$file_version" ]]; then
+            echo "::error::Requested version ($input_version) does not match VERSION file ($file_version). Update VERSION and commit first."
+            exit 1
+          fi
+          # Fail if a release for this tag already exists (never overwrite).
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::A GitHub Release for $tag already exists. Refusing to overwrite."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          CHANNEL=release bash scripts/version/compute_version.sh VERSION
+
+      - uses: ./.github/actions/setup
+
+      - run: flutter pub get
+
+      - name: Validate repository
+        run: |
+          bash scripts/validation/check_app_id.sh
+          bash scripts/validation/check_permissions.sh
+          bash scripts/validation/check_branding.sh
+          bash scripts/validation/check_no_binaries.sh
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze & test
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Decode signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::Missing secret ANDROID_KEYSTORE_BASE64. Configure production signing secrets (see docs/DEVELOPMENT.md). Failing safely without publishing."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "keystore decoded"
+
+      - name: Build signed release APK & AAB
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          flutter build apk --release \
+            --build-name=${{ steps.ver.outputs.version_name }} \
+            --build-number=${{ steps.ver.outputs.version_code }}
+          flutter build appbundle --release \
+            --build-name=${{ steps.ver.outputs.version_name }} \
+            --build-number=${{ steps.ver.outputs.version_code }}
+
+      - name: Verify APK application ID
+        run: bash scripts/validation/verify_apk.sh build/app/outputs/flutter-apk/app-release.apk com.itisuniqueofficial.ual
+
+      - name: Stage release assets
+        id: stage
+        run: |
+          set -euo pipefail
+          v="${{ steps.ver.outputs.version }}"
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Universal-App-Lock-v${v}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "dist/Universal-App-Lock-v${v}.aab"
+          bash scripts/release/checksums.sh dist/SHA256SUMS.txt \
+            "dist/Universal-App-Lock-v${v}.apk" \
+            "dist/Universal-App-Lock-v${v}.aab"
+
+      - name: Generate changelog & release notes
+        run: |
+          set -euo pipefail
+          bash scripts/changelog/generate_changelog.sh --out dist/CHANGELOG_SNIPPET.md
+          bash scripts/release/make_release_notes.sh "${{ steps.ver.outputs.version }}" \
+            --changelog dist/CHANGELOG_SNIPPET.md \
+            --out dist/RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Universal App Lock v${{ steps.ver.outputs.version }}
+          body_path: dist/RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/Universal-App-Lock-v${{ steps.ver.outputs.version }}.apk
+            dist/Universal-App-Lock-v${{ steps.ver.outputs.version }}.aab
+            dist/SHA256SUMS.txt
+
+      - name: Clean up signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"
