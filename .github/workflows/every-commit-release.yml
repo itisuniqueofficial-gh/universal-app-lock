@@ -17,9 +17,6 @@ jobs:
   release-build:
     name: Build & publish commit prerelease
     runs-on: ubuntu-latest
-    env:
-      CHANNEL: build
-      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +26,9 @@ jobs:
 
       - name: Compute version identity
         id: ver
+        env:
+          CHANNEL: build
+          BUILD_NUMBER: ${{ github.run_number }}
         run: bash scripts/version/compute_version.sh VERSION
 
       - run: flutter pub get
