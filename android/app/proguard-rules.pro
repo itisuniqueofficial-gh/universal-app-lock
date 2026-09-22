@@ -8,6 +8,11 @@
 -dontwarn com.google.errorprone.annotations.**
 -dontwarn javax.annotation.**
 -dontwarn javax.annotation.concurrent.**
+# Tink's optional KeysDownloader references the Google HTTP client and Joda-Time,
+# which we do not use (we only use local EncryptedSharedPreferences).
+-dontwarn com.google.api.client.**
+-dontwarn com.google.api.**
+-dontwarn org.joda.time.**
 
 # Keep Tink crypto classes used by EncryptedSharedPreferences at runtime.
 -keep class com.google.crypto.tink.** { *; }
