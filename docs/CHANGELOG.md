@@ -9,6 +9,14 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 ## [Unreleased]
 
 ### Features
+- **App-lock enforcement engine (native)**: `ForegroundMonitorService` (UsageStats-based
+  foreground detection, foreground service), `LockActivity` (native authentication surface
+  hosting the sharp PIN lock screen), `LockSessionManager` + `LockPolicyEngine` (in-memory
+  unlock sessions, lock-on-exit / screen-off / timeout), encrypted `ProtectedAppsStore`
+  (Keystore-backed), `BootReceiver` (restore monitoring after reboot), and
+  `PackageChangeReceiver` (prune uninstalled apps). Bridge v4 exposes protected-apps,
+  monitoring start/stop/status, unlock-grant, and relock policy. Flutter lock route + Security
+  Center monitoring control wired. **Compile/CI-verified only — NOT device-tested.**
 - Real PIN setup / change / remove UI: a sharp (zero-corner) numeric keypad
   (`PinEntryScreen`) and `PinFlows` wired to the Keystore-backed
   `AuthenticationService`. The Security & Permissions PIN card now has working

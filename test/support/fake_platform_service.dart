@@ -67,4 +67,44 @@ class FakePlatformService extends PlatformService {
     storedPin = null;
     return true;
   }
+
+  // --- Lock engine (no-ops for tests) --------------------------------------
+  final List<String> protectedApps = [];
+  String monitoring = 'stopped';
+
+  @override
+  Future<List<String>> getProtectedApps() async =>
+      List<String>.from(protectedApps);
+
+  @override
+  Future<bool> setProtectedApps(List<String> packages) async {
+    protectedApps
+      ..clear()
+      ..addAll(packages);
+    return true;
+  }
+
+  @override
+  Future<bool> startMonitoring() async {
+    monitoring = 'running';
+    return true;
+  }
+
+  @override
+  Future<bool> stopMonitoring() async {
+    monitoring = 'stopped';
+    return true;
+  }
+
+  @override
+  Future<String> getMonitoringStatus() async => monitoring;
+
+  @override
+  Future<bool> grantUnlock(String packageName) async => true;
+
+  @override
+  Future<bool> setRelockPolicy({
+    int? relockTimeoutMs,
+    bool? lockOnScreenOff,
+  }) async => true;
 }

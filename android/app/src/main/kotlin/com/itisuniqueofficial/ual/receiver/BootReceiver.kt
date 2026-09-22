@@ -3,20 +3,26 @@ package com.itisuniqueofficial.ual.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.itisuniqueofficial.ual.lock.LockSessionManager
+import com.itisuniqueofficial.ual.lock.ProtectedAppsStore
+import com.itisuniqueofficial.ual.service.ForegroundMonitorService
 
 /**
- * BootReceiver will (in a future phase) re-establish the lock engine after the
- * device restarts, if and only if the user has enabled locking.
- *
- * STATUS: stub only — NOT implemented and NOT registered in AndroidManifest.xml.
- *
- * This receiver is inert: it is not declared in the manifest, holds no
- * RECEIVE_BOOT_COMPLETED permission, and does nothing on receive. It exists only
- * to establish the package boundary for the future implementation.
+ * Restarts foreground monitoring after a device reboot IF the user had enabled
+ * it. Authenticated sessions never survive reboot: the in-memory session store
+ * starts empty, and we clear it defensively here.
  */
 class BootReceiver : BroadcastReceiver() {
-
     override fun onReceive(context: Context, intent: Intent) {
-        // No-op: boot handling is not implemented in this phase.
+        val action = intent.action ?: return
+        if (action == Intent.ACTION_BOOT_COMPLETED ||
+            action == Intent.ACTION_LOCKED_BOOT_COMPLETED
+        ) {
+            LockSessionManager.invalidateAll()
+            val store = ProtectedAppsStore(context)
+            if (store.monitoringEnabled && store.getProtected().isNotEmpty()) {
+                ForegroundMonitorService.start(context)
+            }
+        }
     }
 }

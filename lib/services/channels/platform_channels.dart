@@ -8,7 +8,7 @@ class PlatformChannels {
 
   /// Expected native bridge contract version. Kept in sync with
   /// `PlatformBridge.BRIDGE_VERSION` on the Kotlin side.
-  static const int bridgeVersion = 3;
+  static const int bridgeVersion = 4;
 
   static const String methodChannel = 'com.itisuniqueofficial.ual/platform';
   static const String eventChannel =
@@ -41,4 +41,13 @@ class PlatformMethods {
   static const String authSetPin = 'authSetPin';
   static const String authVerifyPin = 'authVerifyPin';
   static const String authClearPin = 'authClearPin';
+
+  // Protected apps (native source of truth) + enforcement.
+  static const String getProtectedApps = 'getProtectedApps';
+  static const String setProtectedApps = 'setProtectedApps';
+  static const String startMonitoring = 'startMonitoring';
+  static const String stopMonitoring = 'stopMonitoring';
+  static const String getMonitoringStatus = 'getMonitoringStatus';
+  static const String grantUnlock = 'grantUnlock';
+  static const String setRelockPolicy = 'setRelockPolicy';
 }

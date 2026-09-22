@@ -59,6 +59,13 @@ class _ProtectedAppsScreenState extends State<ProtectedAppsScreen> {
         _protected.remove(app.packageName);
       }
     });
+    // Mirror to the native source of truth the monitor reads.
+    try {
+      final all = await widget.repository.getProtectedPackages();
+      await widget.platform.setProtectedApps(all.toList());
+    } catch (_) {
+      // Non-fatal in host/test environments without the native bridge.
+    }
   }
 
   @override

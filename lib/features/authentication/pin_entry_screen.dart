@@ -17,6 +17,9 @@ class PinEntryScreen extends StatefulWidget {
     this.minLength = 4,
     this.maxLength = 8,
     this.errorText,
+    this.headerIcon,
+    this.blockBack = false,
+    this.onSubmit,
   });
 
   final String title;
@@ -26,6 +29,17 @@ class PinEntryScreen extends StatefulWidget {
 
   /// Optional error to show immediately (e.g. "Incorrect PIN").
   final String? errorText;
+
+  /// Optional custom header (e.g. the protected app's icon). Defaults to a lock.
+  final Widget? headerIcon;
+
+  /// When true, the screen cannot be dismissed with back/gesture (lock mode).
+  final bool blockBack;
+
+  /// When provided, submitting calls this instead of popping. Return a non-null
+  /// error string to display it and clear the entry; return null on success
+  /// (the caller is responsible for any navigation, e.g. finishing the activity).
+  final Future<String?> Function(String pin)? onSubmit;
 
   @override
   State<PinEntryScreen> createState() => _PinEntryScreenState();
@@ -56,55 +70,73 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     setState(() => _entry = _entry.substring(0, _entry.length - 1));
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_entry.length < widget.minLength) {
       setState(() => _error = 'Enter at least ${widget.minLength} digits');
       return;
     }
-    Navigator.of(context).pop<String>(_entry);
+    final cb = widget.onSubmit;
+    if (cb == null) {
+      Navigator.of(context).pop<String>(_entry);
+      return;
+    }
+    final err = await cb(_entry);
+    if (!mounted) return;
+    setState(() {
+      if (err != null) {
+        _error = err;
+        _entry = '';
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            const Icon(Icons.lock_outline, size: 48),
-            const SizedBox(height: 16),
-            if (widget.subtitle.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+    return PopScope(
+      canPop: !widget.blockBack,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+          automaticallyImplyLeading: !widget.blockBack,
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              widget.headerIcon ?? const Icon(Icons.lock_outline, size: 48),
+              const SizedBox(height: 16),
+              if (widget.subtitle.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    widget.subtitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              const SizedBox(height: 20),
+              _Dots(count: _entry.length, max: widget.maxLength),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 20,
                 child: Text(
-                  widget.subtitle,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium,
+                  _error ?? '',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.error,
+                  ),
                 ),
               ),
-            const SizedBox(height: 20),
-            _Dots(count: _entry.length, max: widget.maxLength),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 20,
-              child: Text(
-                _error ?? '',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.error,
-                ),
+              const Spacer(),
+              _Keypad(
+                onDigit: _tap,
+                onBackspace: _backspace,
+                onSubmit: _submit,
+                submitEnabled: _entry.isNotEmpty,
               ),
-            ),
-            const Spacer(),
-            _Keypad(
-              onDigit: _tap,
-              onBackspace: _backspace,
-              onSubmit: _submit,
-              submitEnabled: _entry.isNotEmpty,
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

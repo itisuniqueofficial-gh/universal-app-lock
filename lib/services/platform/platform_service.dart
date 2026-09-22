@@ -110,6 +110,37 @@ class PlatformService {
 
   Future<bool> authClearPin() => _invoke<bool>(PlatformMethods.authClearPin);
 
+  // --- Protected apps + enforcement -----------------------------------------
+
+  Future<List<String>> getProtectedApps() async {
+    final raw = await _invoke<List<dynamic>>(PlatformMethods.getProtectedApps);
+    return raw.whereType<String>().toList();
+  }
+
+  Future<bool> setProtectedApps(List<String> packages) =>
+      _invoke<bool>(PlatformMethods.setProtectedApps, {'packages': packages});
+
+  Future<bool> startMonitoring() =>
+      _invoke<bool>(PlatformMethods.startMonitoring);
+
+  Future<bool> stopMonitoring() =>
+      _invoke<bool>(PlatformMethods.stopMonitoring);
+
+  /// One of: "running", "stopped".
+  Future<String> getMonitoringStatus() =>
+      _invoke<String>(PlatformMethods.getMonitoringStatus);
+
+  /// Grants a temporary unlock session for [packageName] (called by the lock
+  /// screen after successful authentication).
+  Future<bool> grantUnlock(String packageName) =>
+      _invoke<bool>(PlatformMethods.grantUnlock, {'packageName': packageName});
+
+  Future<bool> setRelockPolicy({int? relockTimeoutMs, bool? lockOnScreenOff}) =>
+      _invoke<bool>(PlatformMethods.setRelockPolicy, {
+        'relockTimeoutMs': ?relockTimeoutMs,
+        'lockOnScreenOff': ?lockOnScreenOff,
+      });
+
   // --- Events ---------------------------------------------------------------
 
   Stream<Map<dynamic, dynamic>> events() {

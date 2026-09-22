@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import com.itisuniqueofficial.ual.lock.LockSessionManager
+import com.itisuniqueofficial.ual.lock.ProtectedAppsStore
+import com.itisuniqueofficial.ual.service.ForegroundMonitorService
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -26,7 +29,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
 
     companion object {
         /** Semantic version of the platform bridge contract. */
-        const val BRIDGE_VERSION = 3
+        const val BRIDGE_VERSION = 4
 
         const val METHOD_CHANNEL = "com.itisuniqueofficial.ual/platform"
         const val EVENT_CHANNEL = "com.itisuniqueofficial.ual/platform_events"
@@ -40,6 +43,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
     private val usageAccess = UsageAccessManager(context)
     private val overlay = OverlayPermissionManager(context)
     private val auth = AuthenticationManager(context)
+    private val protectedStore = ProtectedAppsStore(context)
 
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -124,6 +128,47 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
                 else result.success(auth.verifyPin(pin))
             }
             "authClearPin" -> result.success(auth.clearPin())
+
+            // --- Protected apps (native source of truth) -----------------------
+            "getProtectedApps" -> result.success(protectedStore.getProtected().toList())
+            "setProtectedApps" -> {
+                val list = call.argument<List<String>>("packages") ?: emptyList()
+                protectedStore.setProtected(list)
+                result.success(true)
+            }
+
+            // --- Monitoring / enforcement --------------------------------------
+            "startMonitoring" -> {
+                protectedStore.monitoringEnabled = true
+                ForegroundMonitorService.start(context)
+                result.success(true)
+            }
+            "stopMonitoring" -> {
+                protectedStore.monitoringEnabled = false
+                ForegroundMonitorService.stop(context)
+                result.success(true)
+            }
+            "getMonitoringStatus" -> result.success(
+                if (ForegroundMonitorService.isRunning) "running" else "stopped",
+            )
+            "grantUnlock" -> {
+                val pkg = call.argument<String>("packageName")
+                if (pkg == null) {
+                    result.error("bad_args", "packageName is required", null)
+                } else {
+                    LockSessionManager.grant(pkg, protectedStore.relockTimeoutMs)
+                    result.success(true)
+                }
+            }
+            "setRelockPolicy" -> {
+                (call.argument<Number>("relockTimeoutMs"))?.let {
+                    protectedStore.relockTimeoutMs = it.toLong()
+                }
+                (call.argument<Boolean>("lockOnScreenOff"))?.let {
+                    protectedStore.lockOnScreenOff = it
+                }
+                result.success(true)
+            }
 
             else -> result.notImplemented()
         }

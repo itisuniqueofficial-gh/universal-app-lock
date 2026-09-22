@@ -22,8 +22,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(AppInfo.appName), findsWidgets);
-    // Protection must NOT be shown as active.
-    expect(find.text('Not set up'), findsOneWidget);
+    // Protection must NOT be shown as active when monitoring is stopped.
+    expect(find.text('Not active'), findsOneWidget);
     expect(find.text('Protected Apps'), findsWidgets);
     // With no permissions granted, 2 must be reported as needing to be granted.
     expect(find.text('2 to grant'), findsOneWidget);
