@@ -1,0 +1,75 @@
+# ==========================================================================
+# Universal App Lock — .gitignore
+# ==========================================================================
+
+# --- Project forensic / APK working directories (NEVER commit) ------------
+# Proprietary Samsung APK, decoded/decompiled material, rebuild outputs, and
+# any signing/secret material. These must not be published.
+original/
+decoded/
+jadx/
+rebuilt/
+signed/
+keys/
+logs/
+backups/
+
+# --- Signing credentials / secrets (NEVER commit) -------------------------
+*.jks
+*.keystore
+*.p12
+*.pem
+*.der
+key.properties
+android/key.properties
+*.env
+.env
+
+# --- Generated build artifacts (do not commit APK/AAB to source tree) -----
+*.apk
+*.aab
+*.idsig
+
+# ==========================================================================
+# Flutter / Dart
+# ==========================================================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+**/doc/api/
+app.*.symbols
+app.*.map.json
+.widget_preview/
+migrate_working_dir/
+
+# ==========================================================================
+# Android
+# ==========================================================================
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/captures/
+.cxx/
+
+# ==========================================================================
+# IDE / editor / OS
+# ==========================================================================
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.log
+*.class
+*.swp
+.DS_Store
+.atom/
+.history
+.svn/
