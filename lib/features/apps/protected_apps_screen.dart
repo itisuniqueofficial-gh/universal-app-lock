@@ -132,7 +132,7 @@ class _ProtectedAppsScreenState extends State<ProtectedAppsScreen> {
         }
         return ListView.separated(
           itemCount: visible.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (_, _) =>
               Divider(height: 1, color: Theme.of(context).dividerColor),
           itemBuilder: (context, i) {
             final app = visible[i];

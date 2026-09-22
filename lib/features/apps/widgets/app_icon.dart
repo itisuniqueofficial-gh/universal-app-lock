@@ -44,7 +44,7 @@ class AppIcon extends StatelessWidget {
                 width: size,
                 height: size,
                 gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => _fallback(context),
+                errorBuilder: (_, _, _) => _fallback(context),
               ),
             );
           }
