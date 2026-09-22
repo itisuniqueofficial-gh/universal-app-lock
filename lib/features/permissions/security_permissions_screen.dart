@@ -42,6 +42,7 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
   PermissionStatus _overlay = PermissionStatus.unknown;
   PermissionStatus _biometric = PermissionStatus.unknown;
   String _monitoring = 'stopped';
+  bool _selfLock = false;
 
   @override
   void initState() {
@@ -86,6 +87,10 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
       () => widget.platform.getMonitoringStatus(),
       'stopped',
     );
+    final selfLock = await _safe(
+      () => widget.platform.getSelfLockState(),
+      false,
+    );
     if (!mounted) return;
     setState(() {
       _hasPin = hasPin;
@@ -93,6 +98,7 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
       _overlay = overlay;
       _biometric = bio;
       _monitoring = monitoring;
+      _selfLock = selfLock;
       _loading = false;
     });
   }
@@ -142,6 +148,35 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
     try {
       await widget.platform.stopMonitoring();
     } catch (_) {}
+    if (mounted) _load();
+  }
+
+  Future<void> _toggleSelfLock(bool value) async {
+    if (value) {
+      if (!_hasPin) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Set up a PIN before enabling Self Lock.'),
+            ),
+          );
+        }
+        return;
+      }
+      try {
+        await widget.platform.setSelfLock(true);
+      } catch (_) {}
+    } else {
+      final ok = await PinFlows.authenticate(
+        context,
+        widget.auth,
+        title: 'Confirm to disable Self Lock',
+      );
+      if (!ok || !mounted) return;
+      try {
+        await widget.platform.setSelfLock(false);
+      } catch (_) {}
+    }
     if (mounted) _load();
   }
 
@@ -217,6 +252,8 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
                     onStart: _startMonitoring,
                     onStop: _stopMonitoring,
                   ),
+                  const SizedBox(height: 12),
+                  _SelfLockCard(enabled: _selfLock, onChanged: _toggleSelfLock),
                   const SizedBox(height: 16),
                   const _DeviceNote(),
                 ],
@@ -503,6 +540,49 @@ class _MonitoringCard extends StatelessWidget {
                     onPressed: onStart,
                     child: const Text('START MONITORING'),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelfLockCard extends StatelessWidget {
+  const _SelfLockCard({required this.enabled, required this.onChanged});
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FlatCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                enabled ? Icons.verified_user : Icons.shield_outlined,
+                color: enabled ? AppTheme.success : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Self Lock',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Switch(value: enabled, onChanged: onChanged),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Require authentication to open Universal App Lock itself. Enabling '
+            'needs a PIN; disabling requires authentication.',
+            style: theme.textTheme.bodySmall,
           ),
         ],
       ),
