@@ -57,6 +57,13 @@ android {
             } else {
                 signingConfigs.getByName("release")
             }
+            // R8 is enabled for release; supply keep/dontwarn rules for the
+            // Tink classes brought in transitively by androidx.security-crypto.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
