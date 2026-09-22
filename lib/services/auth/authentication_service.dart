@@ -7,6 +7,10 @@
 /// material is ever stored or logged here.
 library;
 
+// Private fields are exposed as public named constructor params, so
+// initializing formals (this._x) are not usable by external callers here.
+// ignore_for_file: prefer_initializing_formals
+
 import '../../core/auth/lockout_policy.dart';
 import '../../core/auth/pin_format_policy.dart';
 import '../../repositories/key_value_store.dart';
