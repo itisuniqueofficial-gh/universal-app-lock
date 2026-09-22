@@ -1,6 +1,5 @@
 package com.itisuniqueofficial.ual.platform
 
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -27,7 +26,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
 
     companion object {
         /** Semantic version of the platform bridge contract. */
-        const val BRIDGE_VERSION = 2
+        const val BRIDGE_VERSION = 3
 
         const val METHOD_CHANNEL = "com.itisuniqueofficial.ual/platform"
         const val EVENT_CHANNEL = "com.itisuniqueofficial.ual/platform_events"
@@ -40,6 +39,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
     private val discovery = ApplicationDiscoveryManager(context)
     private val usageAccess = UsageAccessManager(context)
     private val overlay = OverlayPermissionManager(context)
+    private val auth = AuthenticationManager(context)
 
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -109,7 +109,21 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
             "openUsageAccessSettings" -> result.success(usageAccess.openSettings())
             "isOverlayPermissionGranted" -> result.success(overlay.isGranted())
             "openOverlaySettings" -> result.success(overlay.openSettings())
-            "getBiometricAvailability" -> result.success(biometricAvailability())
+            "getBiometricAvailability" -> result.success(auth.biometricAvailability())
+
+            // --- Authentication (PIN; secret handling is native) ---------------
+            "authHasPin" -> result.success(auth.hasPin())
+            "authSetPin" -> {
+                val pin = call.argument<String>("pin")
+                if (pin == null) result.error("bad_args", "pin is required", null)
+                else result.success(auth.setPin(pin))
+            }
+            "authVerifyPin" -> {
+                val pin = call.argument<String>("pin")
+                if (pin == null) result.error("bad_args", "pin is required", null)
+                else result.success(auth.verifyPin(pin))
+            }
+            "authClearPin" -> result.success(auth.clearPin())
 
             else -> result.notImplemented()
         }
@@ -142,37 +156,6 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
             )
         } catch (e: PackageManager.NameNotFoundException) {
             mapOf("packageName" to context.packageName, "versionName" to "", "versionCode" to 0L)
-        }
-    }
-
-    /**
-     * Read-only capability probe for device biometrics. This is informational
-     * only; no biometric authentication is performed in this phase.
-     * Returns one of: "available", "not_enrolled", "unavailable".
-     */
-    private fun biometricAvailability(): String {
-        return try {
-            val pm = context.packageManager
-            val hasFingerprint = pm.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
-            val hasFace = Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_FACE)
-            val hasIris = Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_IRIS)
-            val hasHardware = hasFingerprint || hasFace || hasIris
-
-            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            val secure = if (Build.VERSION.SDK_INT >= 23) {
-                km?.isDeviceSecure ?: false
-            } else {
-                @Suppress("DEPRECATION")
-                km?.isKeyguardSecure ?: false
-            }
-
-            when {
-                hasHardware && secure -> "available"
-                hasHardware && !secure -> "not_enrolled"
-                else -> "unavailable"
-            }
-        } catch (e: Exception) {
-            "unavailable"
         }
     }
 }

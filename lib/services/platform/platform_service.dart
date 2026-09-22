@@ -94,6 +94,22 @@ class PlatformService {
   Future<String> getBiometricAvailability() =>
       _invoke<String>(PlatformMethods.getBiometricAvailability);
 
+  // --- Authentication (PIN; secret handling is native) ----------------------
+
+  Future<bool> authHasPin() => _invoke<bool>(PlatformMethods.authHasPin);
+
+  /// Stores a new PIN natively (salted + KDF-hashed in the Android Keystore).
+  /// The plaintext PIN is passed to native code only and never persisted in Dart.
+  Future<bool> authSetPin(String pin) =>
+      _invoke<bool>(PlatformMethods.authSetPin, {'pin': pin});
+
+  /// Verifies a PIN natively. Returns whether it matched. Attempt/lockout
+  /// accounting is handled by [AuthenticationService] (non-secret state).
+  Future<bool> authVerifyPin(String pin) =>
+      _invoke<bool>(PlatformMethods.authVerifyPin, {'pin': pin});
+
+  Future<bool> authClearPin() => _invoke<bool>(PlatformMethods.authClearPin);
+
   // --- Events ---------------------------------------------------------------
 
   Stream<Map<dynamic, dynamic>> events() {

@@ -8,7 +8,7 @@ class PlatformChannels {
 
   /// Expected native bridge contract version. Kept in sync with
   /// `PlatformBridge.BRIDGE_VERSION` on the Kotlin side.
-  static const int bridgeVersion = 2;
+  static const int bridgeVersion = 3;
 
   static const String methodChannel = 'com.itisuniqueofficial.ual/platform';
   static const String eventChannel =
@@ -35,4 +35,10 @@ class PlatformMethods {
   static const String isOverlayPermissionGranted = 'isOverlayPermissionGranted';
   static const String openOverlaySettings = 'openOverlaySettings';
   static const String getBiometricAvailability = 'getBiometricAvailability';
+
+  // Authentication (PIN). Secret handling is native (Android Keystore).
+  static const String authHasPin = 'authHasPin';
+  static const String authSetPin = 'authSetPin';
+  static const String authVerifyPin = 'authVerifyPin';
+  static const String authClearPin = 'authClearPin';
 }
