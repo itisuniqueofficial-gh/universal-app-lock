@@ -50,8 +50,23 @@ Expected package name: `com.itisuniqueofficial.ual`.
 - Method channel: `com.itisuniqueofficial.ual/platform`
 - Event channel:  `com.itisuniqueofficial.ual/platform_events`
 - Bridge version constant kept in sync between Dart (`PlatformChannels.bridgeVersion`)
-  and Kotlin (`PlatformBridge.BRIDGE_VERSION`).
-- Phase 5 exposes diagnostic methods only. See `SECURITY.md` before adding methods.
+  and Kotlin (`PlatformBridge.BRIDGE_VERSION`). Currently **v2**.
+- Methods (v2): `getBridgeVersion`, `getAndroidSdk`, `getPlatformInfo`, `getAppVersion`,
+  `getInstalledApplications`, `getApplicationIcon`, `isUsageAccessGranted`,
+  `openUsageAccessSettings`, `isOverlayPermissionGranted`, `openOverlaySettings`,
+  `getBiometricAvailability`. All access is via `PlatformService`. See `SECURITY.md`
+  before adding methods.
+
+## Android permissions & queries
+- `PACKAGE_USAGE_STATS` (special permission, user-granted in Settings) is declared for
+  future foreground detection; its state is detected via `AppOpsManager`.
+- A `<queries>` entry for the `MAIN`/`LAUNCHER` intent lets the app enumerate launchable
+  apps **without** the flagged `QUERY_ALL_PACKAGES` permission.
+- No Samsung privileged permissions are present (CI enforces this).
+
+## Notable dependencies
+- `shared_preferences` — local key/value persistence (protected-apps policy, settings).
+- `flutter_launcher_icons` (dev) — icon generation from `icons/icon.png` (CI).
 
 ## Conventions
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:` …) for future semantic versioning.

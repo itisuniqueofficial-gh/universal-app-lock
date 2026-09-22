@@ -1,15 +1,16 @@
 import 'package:flutter/services.dart';
 
 import '../../core/errors/platform_bridge_exception.dart';
+import '../../core/models/app_info.dart';
 import '../../core/models/platform_info.dart';
 import '../channels/platform_channels.dart';
 
 /// PlatformService is the Dart-side facade over the native platform bridge.
 ///
-/// It currently exposes ONLY harmless, read-only diagnostic capabilities. It
-/// does not perform, request, or expose any security-sensitive or privileged
-/// operation. Security-critical functionality lives natively (Kotlin) and will
-/// be surfaced through explicitly named methods in later phases.
+/// It is the ONLY place MethodChannel calls are made; the UI communicates
+/// exclusively through this abstraction. In this phase it exposes read-only
+/// diagnostics, application discovery, and permission detection/navigation.
+/// It performs no locking, monitoring, or authentication.
 class PlatformService {
   PlatformService({MethodChannel? methodChannel, EventChannel? eventChannel})
     : _method =
@@ -20,35 +21,92 @@ class PlatformService {
   final MethodChannel _method;
   final EventChannel _events;
 
-  /// Returns the native bridge contract version.
-  Future<int> getBridgeVersion() => _invoke<int>('getBridgeVersion');
+  // --- Diagnostics ----------------------------------------------------------
 
-  /// Returns the running Android SDK integer (e.g. 34).
-  Future<int> getAndroidSdk() => _invoke<int>('getAndroidSdk');
+  Future<int> getBridgeVersion() =>
+      _invoke<int>(PlatformMethods.getBridgeVersion);
 
-  /// Returns read-only device/platform metadata.
+  Future<int> getAndroidSdk() => _invoke<int>(PlatformMethods.getAndroidSdk);
+
   Future<PlatformInfo> getPlatformInfo() async {
-    final map = await _invoke<Map<dynamic, dynamic>>('getPlatformInfo');
+    final map = await _invoke<Map<dynamic, dynamic>>(
+      PlatformMethods.getPlatformInfo,
+    );
     return PlatformInfo.fromMap(map);
   }
 
-  /// Returns the installed application's version metadata.
-  Future<AppVersion> getAppVersion() async {
-    final map = await _invoke<Map<dynamic, dynamic>>('getAppVersion');
-    return AppVersion.fromMap(map);
+  // --- Application discovery ------------------------------------------------
+
+  /// Returns installed, user-launchable applications. Set [includeSystem] to
+  /// include system apps. Malformed entries are skipped rather than throwing.
+  Future<List<AppInfo>> getInstalledApplications({
+    bool includeSystem = false,
+  }) async {
+    final raw = await _invoke<List<dynamic>>(
+      PlatformMethods.getInstalledApplications,
+      {'includeSystem': includeSystem},
+    );
+    final apps = <AppInfo>[];
+    for (final entry in raw) {
+      if (entry is Map) {
+        try {
+          apps.add(AppInfo.fromMap(entry));
+        } catch (_) {
+          // Skip a single malformed record.
+        }
+      }
+    }
+    return apps;
   }
 
-  /// A stream of harmless diagnostic events from the native side (currently a
-  /// single "ready" capability event on listen). No sensitive data is emitted.
+  /// Returns the PNG icon bytes for [packageName], or null if unavailable.
+  Future<Uint8List?> getApplicationIcon(
+    String packageName, {
+    int sizePx = 96,
+  }) async {
+    try {
+      return await _method.invokeMethod<Uint8List>(
+        PlatformMethods.getApplicationIcon,
+        {'packageName': packageName, 'sizePx': sizePx},
+      );
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  // --- Permissions ----------------------------------------------------------
+
+  Future<bool> isUsageAccessGranted() =>
+      _invoke<bool>(PlatformMethods.isUsageAccessGranted);
+
+  Future<bool> openUsageAccessSettings() =>
+      _invoke<bool>(PlatformMethods.openUsageAccessSettings);
+
+  Future<bool> isOverlayPermissionGranted() =>
+      _invoke<bool>(PlatformMethods.isOverlayPermissionGranted);
+
+  Future<bool> openOverlaySettings() =>
+      _invoke<bool>(PlatformMethods.openOverlaySettings);
+
+  /// One of: "available", "not_enrolled", "unavailable".
+  Future<String> getBiometricAvailability() =>
+      _invoke<String>(PlatformMethods.getBiometricAvailability);
+
+  // --- Events ---------------------------------------------------------------
+
   Stream<Map<dynamic, dynamic>> events() {
     return _events.receiveBroadcastStream().map(
       (event) => (event as Map).cast<dynamic, dynamic>(),
     );
   }
 
-  Future<T> _invoke<T>(String method) async {
+  // --- Internal -------------------------------------------------------------
+
+  Future<T> _invoke<T>(String method, [dynamic args]) async {
     try {
-      final result = await _method.invokeMethod<T>(method);
+      final result = await _method.invokeMethod<T>(method, args);
       if (result == null) {
         throw PlatformBridgeException('Method "$method" returned null');
       }

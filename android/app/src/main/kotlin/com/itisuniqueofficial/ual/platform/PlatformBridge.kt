@@ -1,33 +1,33 @@
 package com.itisuniqueofficial.ual.platform
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.Executors
 
 /**
  * PlatformBridge is the single, narrow boundary between Flutter/Dart and the
  * native Android layer for Universal App Lock.
  *
- * SECURITY BOUNDARY
- * -----------------
- * In this phase the bridge exposes ONLY harmless, read-only diagnostic methods.
- * No privileged capabilities, no Samsung-only APIs, and no app-lock enforcement
- * are exposed. Future security-sensitive operations (monitoring, overlay,
- * authentication, secure storage, boot handling) will be added here behind
- * explicitly named, individually reviewed methods — never in Dart.
+ * Phase 6 surface: read-only diagnostics, application discovery, and permission
+ * detection/settings navigation. NO app-lock enforcement, monitoring, overlay
+ * drawing, or authentication is exposed. Security-sensitive operations remain
+ * native and will be added behind explicitly reviewed methods in later phases.
  *
- * The bridge is versioned via [BRIDGE_VERSION] so Dart and native can detect
- * incompatibilities as the surface grows.
+ * The bridge is versioned via [BRIDGE_VERSION].
  */
 class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHandler {
 
     companion object {
         /** Semantic version of the platform bridge contract. */
-        const val BRIDGE_VERSION = 1
+        const val BRIDGE_VERSION = 2
 
         const val METHOD_CHANNEL = "com.itisuniqueofficial.ual/platform"
         const val EVENT_CHANNEL = "com.itisuniqueofficial.ual/platform_events"
@@ -37,6 +37,13 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
     private var eventChannel: EventChannel? = null
     private var eventSink: EventChannel.EventSink? = null
 
+    private val discovery = ApplicationDiscoveryManager(context)
+    private val usageAccess = UsageAccessManager(context)
+    private val overlay = OverlayPermissionManager(context)
+
+    private val io = Executors.newSingleThreadExecutor()
+    private val main = Handler(Looper.getMainLooper())
+
     fun attach(messenger: BinaryMessenger) {
         methodChannel = MethodChannel(messenger, METHOD_CHANNEL).apply {
             setMethodCallHandler(this@PlatformBridge)
@@ -45,14 +52,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
             setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                     eventSink = events
-                    // Emit a single, harmless "ready" capability event so the Dart
-                    // side can verify the event channel is wired. No sensitive data.
-                    events?.success(
-                        mapOf(
-                            "type" to "ready",
-                            "bridgeVersion" to BRIDGE_VERSION,
-                        )
-                    )
+                    events?.success(mapOf("type" to "ready", "bridgeVersion" to BRIDGE_VERSION))
                 }
 
                 override fun onCancel(arguments: Any?) {
@@ -68,14 +68,49 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
         methodChannel = null
         eventChannel = null
         eventSink = null
+        io.shutdown()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            // --- Diagnostics ---------------------------------------------------
             "getBridgeVersion" -> result.success(BRIDGE_VERSION)
             "getAndroidSdk" -> result.success(Build.VERSION.SDK_INT)
             "getPlatformInfo" -> result.success(platformInfo())
             "getAppVersion" -> result.success(appVersion())
+
+            // --- Application discovery (offloaded to a background thread) -------
+            "getInstalledApplications" -> {
+                val includeSystem = call.argument<Boolean>("includeSystem") ?: false
+                io.execute {
+                    try {
+                        val data = discovery.getInstalledApplications(includeSystem)
+                        main.post { result.success(data) }
+                    } catch (e: Exception) {
+                        main.post { result.error("discovery_error", e.message, null) }
+                    }
+                }
+            }
+            "getApplicationIcon" -> {
+                val pkg = call.argument<String>("packageName")
+                val size = call.argument<Int>("sizePx") ?: 96
+                if (pkg == null) {
+                    result.error("bad_args", "packageName is required", null)
+                } else {
+                    io.execute {
+                        val bytes = discovery.getApplicationIcon(pkg, size)
+                        main.post { result.success(bytes) }
+                    }
+                }
+            }
+
+            // --- Permissions ---------------------------------------------------
+            "isUsageAccessGranted" -> result.success(usageAccess.isGranted())
+            "openUsageAccessSettings" -> result.success(usageAccess.openSettings())
+            "isOverlayPermissionGranted" -> result.success(overlay.isGranted())
+            "openOverlaySettings" -> result.success(overlay.openSettings())
+            "getBiometricAvailability" -> result.success(biometricAvailability())
+
             else -> result.notImplemented()
         }
     }
@@ -106,11 +141,38 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
                 "versionCode" to code,
             )
         } catch (e: PackageManager.NameNotFoundException) {
-            mapOf(
-                "packageName" to context.packageName,
-                "versionName" to "",
-                "versionCode" to 0L,
-            )
+            mapOf("packageName" to context.packageName, "versionName" to "", "versionCode" to 0L)
+        }
+    }
+
+    /**
+     * Read-only capability probe for device biometrics. This is informational
+     * only; no biometric authentication is performed in this phase.
+     * Returns one of: "available", "not_enrolled", "unavailable".
+     */
+    private fun biometricAvailability(): String {
+        return try {
+            val pm = context.packageManager
+            val hasFingerprint = pm.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
+            val hasFace = Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_FACE)
+            val hasIris = Build.VERSION.SDK_INT >= 29 && pm.hasSystemFeature(PackageManager.FEATURE_IRIS)
+            val hasHardware = hasFingerprint || hasFace || hasIris
+
+            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            val secure = if (Build.VERSION.SDK_INT >= 23) {
+                km?.isDeviceSecure ?: false
+            } else {
+                @Suppress("DEPRECATION")
+                km?.isKeyguardSecure ?: false
+            }
+
+            when {
+                hasHardware && secure -> "available"
+                hasHardware && !secure -> "not_enrolled"
+                else -> "unavailable"
+            }
+        } catch (e: Exception) {
+            "unavailable"
         }
     }
 }

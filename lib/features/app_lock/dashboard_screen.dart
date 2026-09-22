@@ -1,29 +1,71 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/models/platform_info.dart';
+import '../../core/widgets/flat_card.dart';
+import '../../repositories/protected_apps_repository.dart';
 import '../../services/platform/platform_service.dart';
 import '../about/about_screen.dart';
+import '../apps/protected_apps_screen.dart';
+import '../permissions/permission_setup_screen.dart';
 import '../settings/settings_screen.dart';
 
-/// Dashboard is the app entry screen.
-///
-/// In this phase it presents branding, a clear "app-lock engine not yet
-/// implemented" status, and a read-only platform diagnostic panel that
-/// exercises the [PlatformService] bridge. It performs no locking.
+/// Dashboard entry screen. Displays the real, non-faked state:
+/// protection is not set up, the number of protected apps, and how many
+/// required permissions are still missing. It performs no locking.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.platformService});
+  const DashboardScreen({
+    super.key,
+    required this.platform,
+    required this.repository,
+  });
 
-  /// Injectable for testing; falls back to a default instance at runtime.
-  final PlatformService? platformService;
+  final PlatformService platform;
+  final ProtectedAppsRepository repository;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  late final PlatformService _platform =
-      widget.platformService ?? PlatformService();
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
+  int? _missingPermissions; // null = checking/unknown
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.repository.load();
+    _refreshPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshPermissions();
+  }
+
+  Future<void> _refreshPermissions() async {
+    try {
+      final usage = await widget.platform.isUsageAccessGranted();
+      final overlay = await widget.platform.isOverlayPermissionGranted();
+      final missing = (usage ? 0 : 1) + (overlay ? 0 : 1);
+      if (mounted) setState(() => _missingPermissions = missing);
+    } catch (_) {
+      if (mounted) setState(() => _missingPermissions = null);
+    }
+  }
+
+  Future<void> _push(Widget screen) async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => screen));
+    // Refresh state after returning.
+    _refreshPermissions();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,45 +77,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-            ),
+            onPressed: () => _push(const SettingsScreen()),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(AppInfo.tagline, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.construction_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'App-lock engine is not yet implemented. '
-                      'This build is a scaffold (Phase 5).',
-                      style: theme.textTheme.bodyMedium,
+          FlatCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Protection', style: theme.textTheme.labelMedium),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.lock_open_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Not set up',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'App-lock enforcement is not implemented yet.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ValueListenableBuilder<Set<String>>(
+                  valueListenable: widget.repository.listenable,
+                  builder: (context, set, _) => _StatCard(
+                    label: 'Protected Apps',
+                    value: '${set.length}',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatCard(
+                  label: 'Security Setup',
+                  value: _missingPermissions == null
+                      ? '—'
+                      : (_missingPermissions == 0
+                            ? 'Ready'
+                            : '$_missingPermissions to grant'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          Text('Diagnostics', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          _DiagnosticsPanel(platform: _platform),
-          const SizedBox(height: 24),
-          FilledButton.tonalIcon(
-            icon: const Icon(Icons.info_outline),
-            label: const Text('About & Credits'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+          FilledButton.icon(
+            icon: const Icon(Icons.security_outlined),
+            label: const Text('Set Up Security'),
+            onPressed: () =>
+                _push(PermissionSetupScreen(platform: widget.platform)),
+          ),
+          const SizedBox(height: 12),
+          FlatCard(
+            onTap: () => _push(
+              ProtectedAppsScreen(
+                platform: widget.platform,
+                repository: widget.repository,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.apps_outlined),
+                const SizedBox(width: 12),
+                const Expanded(child: Text('Protected Apps')),
+                Text('Open', style: theme.textTheme.labelLarge),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          FlatCard(
+            onTap: () => _push(const AboutScreen()),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline),
+                const SizedBox(width: 12),
+                const Expanded(child: Text('About & Credits')),
+                const Icon(Icons.chevron_right),
+              ],
             ),
           ),
         ],
@@ -82,63 +178,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-/// Reads harmless platform info via the bridge. On any failure (e.g. running in
-/// a host/test environment without the native side), it shows a neutral
-/// "unavailable" message rather than crashing.
-class _DiagnosticsPanel extends StatelessWidget {
-  const _DiagnosticsPanel({required this.platform});
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value});
 
-  final PlatformService platform;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PlatformInfo>(
-      future: platform.getPlatformInfo(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Card(
-            child: ListTile(
-              leading: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              title: Text('Reading platform info...'),
+    final theme = Theme.of(context);
+    return FlatCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-          );
-        }
-        if (snapshot.hasError || !snapshot.hasData) {
-          return const Card(
-            child: ListTile(
-              leading: Icon(Icons.help_outline),
-              title: Text('Platform diagnostics unavailable'),
-              subtitle: Text('Native bridge not attached in this environment.'),
-            ),
-          );
-        }
-        final info = snapshot.data!;
-        return Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.android),
-                title: const Text('OS'),
-                trailing: Text('${info.os} (SDK ${info.sdkInt})'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.smartphone),
-                title: const Text('Device'),
-                trailing: Text('${info.manufacturer} ${info.model}'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.link),
-                title: const Text('Bridge version'),
-                trailing: Text('${info.bridgeVersion}'),
-              ),
-            ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
