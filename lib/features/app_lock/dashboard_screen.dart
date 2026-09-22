@@ -6,7 +6,7 @@ import '../../repositories/protected_apps_repository.dart';
 import '../../services/platform/platform_service.dart';
 import '../about/about_screen.dart';
 import '../apps/protected_apps_screen.dart';
-import '../permissions/permission_setup_screen.dart';
+import '../permissions/security_permissions_screen.dart';
 import '../settings/settings_screen.dart';
 
 /// Dashboard entry screen. Displays the real, non-faked state:
@@ -140,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             icon: const Icon(Icons.security_outlined),
             label: const Text('Set Up Security'),
             onPressed: () =>
-                _push(PermissionSetupScreen(platform: widget.platform)),
+                _push(SecurityPermissionsScreen(platform: widget.platform)),
           ),
           const SizedBox(height: 12),
           FlatCard(

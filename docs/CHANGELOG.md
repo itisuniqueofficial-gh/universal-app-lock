@@ -8,7 +8,16 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 
 ## [Unreleased]
 
+### Fixed
+- Overlay permission was not visible on the system "Display over other apps" screen
+  (no toggle). Root cause: `SYSTEM_ALERT_WINDOW` was not declared. Now declared so the app
+  is listable and grantable; state read via `Settings.canDrawOverlays` and re-checked on resume.
+
 ### Features
+- Security & Permissions health screen: real per-permission status (PIN, Usage Access,
+  Display over other apps, biometric availability) with accurate explanations, "Open
+  Settings"/"Re-check", and an overall health state (READY/LIMITED/ACTION REQUIRED/NOT
+  CONFIGURED). Documented decisions to exclude Accessibility and Device Administrator.
 - Secure PIN authentication foundation: Keystore-backed `EncryptedSharedPreferences` + PBKDF2
   hashing (`SecureCredentialStore`), `AuthenticationManager`, platform bridge v3
   (`authHasPin/authSetPin/authVerifyPin/authClearPin`); Dart `PinFormatPolicy`, `LockoutPolicy`,
