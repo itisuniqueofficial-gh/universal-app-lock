@@ -41,6 +41,7 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
   PermissionStatus _usage = PermissionStatus.unknown;
   PermissionStatus _overlay = PermissionStatus.unknown;
   PermissionStatus _biometric = PermissionStatus.unknown;
+  String _monitoring = 'stopped';
 
   @override
   void initState() {
@@ -81,11 +82,17 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
       bio = PermissionStatus.unknown;
     }
     if (!mounted) return;
+    final monitoring = await _safe(
+      () => widget.platform.getMonitoringStatus(),
+      'stopped',
+    );
+    if (!mounted) return;
     setState(() {
       _hasPin = hasPin;
       _usage = usage;
       _overlay = overlay;
       _biometric = bio;
+      _monitoring = monitoring;
       _loading = false;
     });
   }
@@ -121,6 +128,20 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
 
   Future<void> _removePin() async {
     await PinFlows.remove(context, widget.auth);
+    if (mounted) _load();
+  }
+
+  Future<void> _startMonitoring() async {
+    try {
+      await widget.platform.startMonitoring();
+    } catch (_) {}
+    if (mounted) _load();
+  }
+
+  Future<void> _stopMonitoring() async {
+    try {
+      await widget.platform.stopMonitoring();
+    } catch (_) {}
     if (mounted) _load();
   }
 
@@ -189,6 +210,12 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
                     status: _biometric,
                     required: false,
                     onOpenSettings: null,
+                  ),
+                  const SizedBox(height: 12),
+                  _MonitoringCard(
+                    status: _monitoring,
+                    onStart: _startMonitoring,
+                    onStop: _stopMonitoring,
                   ),
                   const SizedBox(height: 16),
                   const _DeviceNote(),
@@ -414,6 +441,71 @@ class _DeviceNote extends StatelessWidget {
       'screen does not open directly, open Settings and search for the '
       'permission by name.',
       style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
+}
+
+class _MonitoringCard extends StatelessWidget {
+  const _MonitoringCard({
+    required this.status,
+    required this.onStart,
+    required this.onStop,
+  });
+
+  final String status; // "running" | "stopped"
+  final VoidCallback onStart;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final running = status == 'running';
+    return FlatCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                running ? Icons.check_circle : Icons.pause_circle_outline,
+                color: running ? AppTheme.success : AppTheme.warning,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Monitoring service',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                running ? 'RUNNING' : 'STOPPED',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Runs a foreground service that detects protected apps and shows the '
+            'lock screen. Requires Usage Access and Display over other apps.',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: running
+                ? OutlinedButton(
+                    onPressed: onStop,
+                    child: const Text('STOP MONITORING'),
+                  )
+                : FilledButton(
+                    onPressed: onStart,
+                    child: const Text('START MONITORING'),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

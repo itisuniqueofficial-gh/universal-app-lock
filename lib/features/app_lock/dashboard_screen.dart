@@ -29,6 +29,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
   int? _missingPermissions; // null = checking/unknown
+  String _monitoring = 'stopped';
 
   @override
   void initState() {
@@ -53,10 +54,21 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       final usage = await widget.platform.isUsageAccessGranted();
       final overlay = await widget.platform.isOverlayPermissionGranted();
+      final monitoring = await widget.platform.getMonitoringStatus();
       final missing = (usage ? 0 : 1) + (overlay ? 0 : 1);
-      if (mounted) setState(() => _missingPermissions = missing);
+      if (mounted) {
+        setState(() {
+          _missingPermissions = missing;
+          _monitoring = monitoring;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _missingPermissions = null);
+      if (mounted) {
+        setState(() {
+          _missingPermissions = null;
+          _monitoring = 'stopped';
+        });
+      }
     }
   }
 
@@ -97,10 +109,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.lock_open_outlined, size: 20),
+                    Icon(
+                      _monitoring == 'running'
+                          ? Icons.lock_outline
+                          : Icons.lock_open_outlined,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'Not set up',
+                      _monitoring == 'running' ? 'Active' : 'Not active',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -109,7 +126,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'On-device lock enforcement is not active in this build.',
+                  _monitoring == 'running'
+                      ? 'The monitoring service is running.'
+                      : 'Start protection from Security & Permissions after setting a PIN and granting permissions.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
