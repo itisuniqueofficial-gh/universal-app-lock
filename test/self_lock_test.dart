@@ -7,13 +7,14 @@ import 'package:universal_app_lock/services/auth/authentication_service.dart';
 import 'support/fake_platform_service.dart';
 
 void main() {
-  Future<void> tapSelfLockSwitch(WidgetTester tester) async {
+  Future<void> enableSelfLock(WidgetTester tester) async {
     await tester.scrollUntilVisible(
       find.byType(Switch),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.byType(Switch).first);
+    final sw = tester.widget<Switch>(find.byType(Switch));
+    sw.onChanged!(true);
     await tester.pumpAndSettle();
   }
 
@@ -30,7 +31,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tapSelfLockSwitch(tester);
+    await enableSelfLock(tester);
 
     expect(find.textContaining('Set up a PIN'), findsOneWidget);
     expect(fake.selfLock, isFalse);
@@ -49,7 +50,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tapSelfLockSwitch(tester);
+    await enableSelfLock(tester);
     expect(fake.selfLock, isTrue);
   });
 }
