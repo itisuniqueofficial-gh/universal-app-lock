@@ -8,7 +8,7 @@ class PlatformChannels {
 
   /// Expected native bridge contract version. Kept in sync with
   /// `PlatformBridge.BRIDGE_VERSION` on the Kotlin side.
-  static const int bridgeVersion = 4;
+  static const int bridgeVersion = 5;
 
   static const String methodChannel = 'com.itisuniqueofficial.ual/platform';
   static const String eventChannel =
@@ -50,4 +50,9 @@ class PlatformMethods {
   static const String getMonitoringStatus = 'getMonitoringStatus';
   static const String grantUnlock = 'grantUnlock';
   static const String setRelockPolicy = 'setRelockPolicy';
+
+  // Self Lock (protect the app's own UI).
+  static const String getSelfLockState = 'getSelfLockState';
+  static const String setSelfLock = 'setSelfLock';
+  static const String setSelfLockPolicy = 'setSelfLockPolicy';
 }

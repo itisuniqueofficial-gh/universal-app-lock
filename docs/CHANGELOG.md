@@ -9,6 +9,12 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 ## [Unreleased]
 
 ### Features
+- **Self Lock**: protect Universal App Lock's own UI. Enforced natively in
+  `MainActivity.onResume` (launches the lock screen when enabled and no valid
+  own-session exists; loop-safe — the monitor excludes our own package). Toggle in
+  the Security Center; enabling requires a PIN, disabling requires authentication.
+  Bridge v5 (`getSelfLockState`/`setSelfLock`/`setSelfLockPolicy`); self-lock config
+  persisted in the encrypted store.
 - **App-lock enforcement engine (native)**: `ForegroundMonitorService` (UsageStats-based
   foreground detection, foreground service), `LockActivity` (native authentication surface
   hosting the sharp PIN lock screen), `LockSessionManager` + `LockPolicyEngine` (in-memory

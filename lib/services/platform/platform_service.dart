@@ -141,6 +141,19 @@ class PlatformService {
         'lockOnScreenOff': ?lockOnScreenOff,
       });
 
+  // --- Self Lock ------------------------------------------------------------
+
+  Future<bool> getSelfLockState() =>
+      _invoke<bool>(PlatformMethods.getSelfLockState);
+
+  Future<bool> setSelfLock(bool enabled) =>
+      _invoke<bool>(PlatformMethods.setSelfLock, {'enabled': enabled});
+
+  Future<bool> setSelfLockPolicy({int? relockTimeoutMs}) => _invoke<bool>(
+    PlatformMethods.setSelfLockPolicy,
+    {'relockTimeoutMs': ?relockTimeoutMs},
+  );
+
   // --- Events ---------------------------------------------------------------
 
   Stream<Map<dynamic, dynamic>> events() {

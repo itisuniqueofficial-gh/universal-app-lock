@@ -73,6 +73,14 @@ class PinFlows {
     return true;
   }
 
+  /// Prompts for the current PIN and returns whether it verified. Used to gate
+  /// security-sensitive actions (e.g. disabling Self Lock).
+  static Future<bool> authenticate(
+    BuildContext context,
+    AuthenticationService auth, {
+    String title = 'Enter PIN',
+  }) => _verify(context, auth, title);
+
   static Future<bool> _verify(
     BuildContext context,
     AuthenticationService auth,

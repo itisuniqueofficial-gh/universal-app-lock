@@ -29,7 +29,7 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
 
     companion object {
         /** Semantic version of the platform bridge contract. */
-        const val BRIDGE_VERSION = 4
+        const val BRIDGE_VERSION = 5
 
         const val METHOD_CHANNEL = "com.itisuniqueofficial.ual/platform"
         const val EVENT_CHANNEL = "com.itisuniqueofficial.ual/platform_events"
@@ -166,6 +166,27 @@ class PlatformBridge(private val context: Context) : MethodChannel.MethodCallHan
                 }
                 (call.argument<Boolean>("lockOnScreenOff"))?.let {
                     protectedStore.lockOnScreenOff = it
+                }
+                result.success(true)
+            }
+
+            // --- Self Lock (protect our own UI) --------------------------------
+            "getSelfLockState" -> result.success(protectedStore.selfLockEnabled)
+            "setSelfLock" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: false
+                protectedStore.selfLockEnabled = enabled
+                // Enabling from within the (already open) app grants an initial
+                // session so the user is not immediately locked out.
+                if (enabled) {
+                    LockSessionManager.grant(context.packageName, protectedStore.selfLockTimeoutMs)
+                } else {
+                    LockSessionManager.invalidate(context.packageName)
+                }
+                result.success(true)
+            }
+            "setSelfLockPolicy" -> {
+                (call.argument<Number>("relockTimeoutMs"))?.let {
+                    protectedStore.selfLockTimeoutMs = it.toLong()
                 }
                 result.success(true)
             }

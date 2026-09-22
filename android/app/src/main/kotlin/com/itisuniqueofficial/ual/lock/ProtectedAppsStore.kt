@@ -65,11 +65,24 @@ class ProtectedAppsStore(context: Context) {
         get() = prefs.getBoolean(KEY_MONITORING, false)
         set(v) = prefs.edit().putBoolean(KEY_MONITORING, v).apply()
 
+    // --- Self Lock (protect Universal App Lock's own UI) ---------------------
+
+    var selfLockEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SELF_LOCK, false)
+        set(v) = prefs.edit().putBoolean(KEY_SELF_LOCK, v).apply()
+
+    /** Re-lock timeout for the app's own UI; 0 means lock on exit/screen-off. */
+    var selfLockTimeoutMs: Long
+        get() = prefs.getLong(KEY_SELF_LOCK_TIMEOUT, 0L)
+        set(v) = prefs.edit().putLong(KEY_SELF_LOCK_TIMEOUT, v).apply()
+
     companion object {
         private const val FILE = "ual_protection_config"
         private const val KEY_PACKAGES = "protected_packages"
         private const val KEY_TIMEOUT = "relock_timeout_ms"
         private const val KEY_SCREEN_OFF = "lock_on_screen_off"
         private const val KEY_MONITORING = "monitoring_enabled"
+        private const val KEY_SELF_LOCK = "self_lock_enabled"
+        private const val KEY_SELF_LOCK_TIMEOUT = "self_lock_timeout_ms"
     }
 }

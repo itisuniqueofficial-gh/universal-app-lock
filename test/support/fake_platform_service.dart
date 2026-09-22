@@ -107,4 +107,18 @@ class FakePlatformService extends PlatformService {
     int? relockTimeoutMs,
     bool? lockOnScreenOff,
   }) async => true;
+
+  bool selfLock = false;
+
+  @override
+  Future<bool> getSelfLockState() async => selfLock;
+
+  @override
+  Future<bool> setSelfLock(bool enabled) async {
+    selfLock = enabled;
+    return true;
+  }
+
+  @override
+  Future<bool> setSelfLockPolicy({int? relockTimeoutMs}) async => true;
 }
