@@ -58,6 +58,7 @@ done
 emit() {
   local title="$1" body="$2"
   [[ -n "$body" ]] && printf '### %s\n\n%s\n' "$title" "$body"
+  return 0
 }
 
 render() {
@@ -72,6 +73,7 @@ render() {
   [[ -n "${BUCKETS[cicd]}" ]] && { emit "CI/CD" "${BUCKETS[cicd]}"; any=1; }
   [[ -n "${BUCKETS[other]}" ]] && { emit "Other" "${BUCKETS[other]}"; any=1; }
   [[ $any -eq 0 ]] && printf '_No categorized changes found in range %s._\n' "${RANGE:-<all history>}"
+  return 0
 }
 
 if [[ -n "$OUT" ]]; then
