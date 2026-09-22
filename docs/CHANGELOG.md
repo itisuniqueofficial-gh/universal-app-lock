@@ -8,6 +8,20 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 
 ## [Unreleased]
 
+### Features
+- Real PIN setup / change / remove UI: a sharp (zero-corner) numeric keypad
+  (`PinEntryScreen`) and `PinFlows` wired to the Keystore-backed
+  `AuthenticationService`. The Security & Permissions PIN card now has working
+  `SET UP PIN` / `CHANGE PIN` / `REMOVE PIN` actions (remove requires verification).
+
+### Changed
+- Enforced the sharp, zero-corner design system app-wide (buttons, inputs, cards,
+  dialogs, chips use 0dp radius via `AppTheme`; `FlatCard` and app icons squared off).
+
+### Removed
+- Placeholder "PIN setup UI arrives in an upcoming update" text — the feature is
+  implemented.
+
 ### Fixed
 - Overlay permission was not visible on the system "Display over other apps" screen
   (no toggle). Root cause: `SYSTEM_ALERT_WINDOW` was not declared. Now declared so the app

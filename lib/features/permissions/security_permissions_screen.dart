@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/models/permission_status.dart';
 import '../../core/utils/app_theme.dart';
 import '../../core/widgets/flat_card.dart';
+import '../../repositories/key_value_store.dart';
+import '../../services/auth/authentication_service.dart';
 import '../../services/platform/platform_service.dart';
+import '../authentication/pin_flows.dart';
 import 'permission_health.dart';
 
 /// Security & Permissions health screen.
@@ -12,9 +15,19 @@ import 'permission_health.dart';
 /// honest explanation, what depends on it, and actions to open the correct
 /// Android settings and re-check. Status refreshes when returning from Settings.
 class SecurityPermissionsScreen extends StatefulWidget {
-  const SecurityPermissionsScreen({super.key, required this.platform});
+  SecurityPermissionsScreen({
+    super.key,
+    required this.platform,
+    AuthenticationService? auth,
+  }) : auth =
+           auth ??
+           AuthenticationService(
+             platform: platform,
+             store: SharedPreferencesKeyValueStore(),
+           );
 
   final PlatformService platform;
+  final AuthenticationService auth;
 
   @override
   State<SecurityPermissionsScreen> createState() =>
@@ -96,6 +109,21 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
   Future<void> _openUsage() => _open(widget.platform.openUsageAccessSettings());
   Future<void> _openOverlay() => _open(widget.platform.openOverlaySettings());
 
+  Future<void> _setUpPin() async {
+    await PinFlows.setUp(context, widget.auth);
+    if (mounted) _load();
+  }
+
+  Future<void> _changePin() async {
+    await PinFlows.change(context, widget.auth);
+    if (mounted) _load();
+  }
+
+  Future<void> _removePin() async {
+    await PinFlows.remove(context, widget.auth);
+    if (mounted) _load();
+  }
+
   Future<void> _open(Future<bool> action) async {
     try {
       await action;
@@ -135,7 +163,12 @@ class _SecurityPermissionsScreenState extends State<SecurityPermissionsScreen>
                 children: [
                   _OverallBanner(health: health),
                   const SizedBox(height: 16),
-                  _PinCard(hasPin: _hasPin),
+                  _PinCard(
+                    hasPin: _hasPin,
+                    onSetUp: _setUpPin,
+                    onChange: _changePin,
+                    onRemove: _removePin,
+                  ),
                   const SizedBox(height: 12),
                   _PermissionCard(
                     kind: PermissionKind.usageAccess,
@@ -207,8 +240,17 @@ class _OverallBanner extends StatelessWidget {
 }
 
 class _PinCard extends StatelessWidget {
-  const _PinCard({required this.hasPin});
+  const _PinCard({
+    required this.hasPin,
+    required this.onSetUp,
+    required this.onChange,
+    required this.onRemove,
+  });
+
   final bool hasPin;
+  final VoidCallback onSetUp;
+  final VoidCallback onChange;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -221,27 +263,57 @@ class _PinCard extends StatelessWidget {
             children: [
               Icon(
                 hasPin ? Icons.check_circle : Icons.warning_amber_rounded,
-                color: hasPin ? AppTheme.blue : Colors.amber,
+                color: hasPin ? AppTheme.blue : AppTheme.warning,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'PIN configured',
+                  'PIN',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              Text(
+                hasPin ? 'Configured' : 'Not configured',
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             hasPin
-                ? 'A PIN is set. It is stored as a salted, Keystore-backed hash — never in plain text.'
-                : 'No PIN is set yet. PIN setup UI arrives in an upcoming update; '
-                      'the secure PIN backend is already implemented.',
+                ? 'Your PIN is stored as a salted, Keystore-backed hash — never in plain text.'
+                : 'Securely protect your applications with a PIN.',
             style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 12),
+          if (!hasPin)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onSetUp,
+                child: const Text('SET UP PIN'),
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onChange,
+                    child: const Text('CHANGE PIN'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onRemove,
+                    child: const Text('REMOVE PIN'),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

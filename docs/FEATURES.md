@@ -29,6 +29,8 @@
 | Platform bridge v3 | ✅ | Single channel; discovery + permission + PIN auth methods; background execution |
 | Secure PIN storage (Keystore) | 🧱 | `SecureCredentialStore` (PBKDF2 + EncryptedSharedPreferences); compile-verified, not device-tested |
 | PIN policy + lockout + auth session | ✅ | Dart `PinFormatPolicy`, `LockoutPolicy`, `AuthSessionManager`, `AuthenticationService` (unit-tested) |
+| PIN setup / change / remove UI | ✅ | Sharp `PinEntryScreen` keypad + `PinFlows` wired to Keystore-backed backend; remove requires verification (widget-tested) |
+| Sharp zero-corner design system | ✅ | `AppTheme` 0dp buttons/inputs/cards/dialogs; `FlatCard` squared |
 
 ### Selecting an app for protection
 Adding an app only records it in the **local protection policy**. It does **not** lock or

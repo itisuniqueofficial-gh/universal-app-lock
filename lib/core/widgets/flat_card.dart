@@ -22,18 +22,14 @@ class FlatCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppTheme.border),
       ),
       child: onTap == null
           ? content
           : Material(
               type: MaterialType.transparency,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: onTap,
-                child: content,
-              ),
+              child: InkWell(onTap: onTap, child: content),
             ),
     );
   }

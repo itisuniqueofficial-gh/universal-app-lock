@@ -38,7 +38,7 @@ class AppIcon extends StatelessWidget {
           final bytes = snapshot.data;
           if (bytes != null && bytes.isNotEmpty) {
             return ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.zero,
               child: Image.memory(
                 bytes,
                 width: size,
@@ -58,7 +58,7 @@ class AppIcon extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Icon(Icons.android, size: size * 0.6),
