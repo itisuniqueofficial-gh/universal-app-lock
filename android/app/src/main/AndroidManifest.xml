@@ -9,6 +9,13 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Display over other apps (special access). Declared so the app is listed
+         on the system "Display over other apps" screen (Android only shows apps
+         that declare this permission) and so its state is detectable via
+         Settings.canDrawOverlays(). Used by the lock screen to appear above a
+         protected app. It is NOT used to read or capture other apps' content. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:label="Universal App Lock"
         android:name="${applicationName}"

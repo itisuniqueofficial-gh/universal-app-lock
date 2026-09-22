@@ -21,6 +21,8 @@
 | Open overlay settings | ✅ | With fallback intents |
 | Biometric availability (info only) | ✅ | Capability probe; no authentication performed |
 | Permission onboarding screen | ✅ | Real status; opens settings; refreshes on resume |
+| Permission onboarding screen | ✅ | Security & Permissions screen: real status, explanations, open-settings, re-check, overall health |
+| Overlay permission visibility | ✅ | `SYSTEM_ALERT_WINDOW` declared so the app is listable/grantable; detected via `canDrawOverlays` |
 | Dashboard real state | ✅ | Protection "Not set up"; protected count; permissions-to-grant count |
 | Permission state model | ✅ | `PermissionStatus` enum (granted/denied/unavailable/notRequired/unknown) |
 | Central settings model | 🧱 | `AppSettings` foundation persisted locally; no user-editable toggles yet |

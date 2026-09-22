@@ -12,7 +12,10 @@ Status legend: **Implemented** (code complete) · **CI-tested** (unit-tested in 
 | App icons | Implemented + Compile-verified | PackageManager | — | `ApplicationDiscoveryManager` + `AppIcon` | — | Not device-tested |
 | Protected-app policy (local) | Implemented + CI-tested | — | — | `ProtectedAppsRepository` (Dart) | Repository unit tests | Kotlin `ProtectedAppPolicy` still Planned |
 | Usage Access detection | Implemented + Compile-verified | `AppOpsManager` | `PACKAGE_USAGE_STATS` | `UsageAccessManager.kt` | — | Not device-tested |
-| Overlay permission detection | Implemented + Compile-verified | `Settings.canDrawOverlays` | (SYSTEM_ALERT_WINDOW later) | `OverlayPermissionManager.kt` | — | Not device-tested |
+| Overlay permission detection + visibility | Implemented + Compile-verified | `Settings.canDrawOverlays`, `ACTION_MANAGE_OVERLAY_PERMISSION` | `SYSTEM_ALERT_WINDOW` (declared) | `OverlayPermissionManager.kt` + manifest | health widget test | Not device-tested |
+| Security & Permissions health screen | Implemented + CI-tested | — | — | `SecurityPermissionsScreen` + `permission_health` | health logic + widget tests | Not device-tested |
+| Accessibility service | Excluded (documented) | — | — | Not declared (UsageStats is primary) | — | Add only if a device gap requires it |
+| Device Administrator | Excluded (documented) | — | — | Not declared; not needed for core lock | — | — |
 | PIN format policy | Implemented + CI-tested | — | — | `PinFormatPolicy` (Dart) | Unit tests | — |
 | Failed-attempt lockout | Implemented + CI-tested | — | — | `LockoutPolicy` + `AuthenticationService` | Unit tests | Attempt state is non-secret (by design) |
 | Auth session / relock timing | Implemented + CI-tested | — | — | `AuthSessionManager` (Dart) | Unit tests | Not yet wired to enforcement |

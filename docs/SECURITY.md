@@ -94,3 +94,39 @@ contact channels on the websites listed in `CREDITS.md`.
 
 > These are design properties verified by code review + CI compilation/unit tests. They have
 > **not** been validated on a physical device.
+
+## Permissions (declared vs deliberately excluded)
+
+Every declared permission maps to a concrete feature, an implementation, a
+user-facing explanation, an onboarding action, a status check, and a recovery path.
+
+| Permission | Type | Why | Status/UI |
+|---|---|---|---|
+| `PACKAGE_USAGE_STATS` | special (user-granted) | Foreground-app detection for enforcement | Detected via `AppOpsManager`; Security & Permissions screen |
+| `SYSTEM_ALERT_WINDOW` | special (user-granted) | Show the lock screen above a protected app | Detected via `Settings.canDrawOverlays`; Security & Permissions screen |
+
+### Overlay visibility bug — root cause & fix
+**Symptom:** Universal App Lock did not appear on the system "Display over other apps"
+screen (no toggle). **Root cause:** the app did not declare
+`android.permission.SYSTEM_ALERT_WINDOW`; Android only lists apps that declare it.
+**Fix:** declared `SYSTEM_ALERT_WINDOW` in `AndroidManifest.xml`. It is a *special access*
+(not a runtime permission): we never call `requestPermissions()` for it. State is read with
+`Settings.canDrawOverlays(context)` and the user is sent to
+`Settings.ACTION_MANAGE_OVERLAY_PERMISSION` with a `package:` URI (with fallbacks to the
+general overlay screen, then app Settings). State is re-checked on app resume — never assumed
+granted just because the user returned.
+
+### Accessibility Service — decision: NOT added
+UsageStats is the supported primary foreground-detection mechanism for third-party app
+lockers. An AccessibilityService is **not** declared in this project. If a future
+Android-version/device gap makes it necessary, it will be added as an **optional**,
+minimum-scope provider with an explicit explanation, and only claims matching the actual
+implementation. It will never read messages/passwords/screen content.
+
+### Device Administrator — decision: NOT added
+Universal App Lock does **not** require Device Administrator for core app-lock enforcement on
+supported devices, so `BIND_DEVICE_ADMIN` / `DeviceAdminReceiver` are intentionally absent
+(and CI rejects them). No destructive policies (wipe/lock/camera/password) are requested.
+
+> Runtime note: these permission behaviors are implemented per Android's documented model but
+> have **not** been validated on a physical device in this project (GitHub-only builds).
