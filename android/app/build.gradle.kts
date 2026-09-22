@@ -19,7 +19,9 @@ android {
         applicationId = "com.itisuniqueofficial.ual"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Universal App Lock requires API 23+ for Android Keystore-backed
+        // EncryptedSharedPreferences and modern biometric APIs.
+        minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -67,4 +69,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Keystore-backed EncryptedSharedPreferences for secure credential storage.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

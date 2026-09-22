@@ -24,7 +24,9 @@
 | Dashboard real state | ✅ | Protection "Not set up"; protected count; permissions-to-grant count |
 | Permission state model | ✅ | `PermissionStatus` enum (granted/denied/unavailable/notRequired/unknown) |
 | Central settings model | 🧱 | `AppSettings` foundation persisted locally; no user-editable toggles yet |
-| Platform bridge v2 | ✅ | Single channel; discovery + permission methods; background execution |
+| Platform bridge v3 | ✅ | Single channel; discovery + permission + PIN auth methods; background execution |
+| Secure PIN storage (Keystore) | 🧱 | `SecureCredentialStore` (PBKDF2 + EncryptedSharedPreferences); compile-verified, not device-tested |
+| PIN policy + lockout + auth session | ✅ | Dart `PinFormatPolicy`, `LockoutPolicy`, `AuthSessionManager`, `AuthenticationService` (unit-tested) |
 
 ### Selecting an app for protection
 Adding an app only records it in the **local protection policy**. It does **not** lock or

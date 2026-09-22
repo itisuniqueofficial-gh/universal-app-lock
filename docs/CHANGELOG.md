@@ -9,6 +9,11 @@ are generated from Conventional Commits by CI (`scripts/changelog/`).
 ## [Unreleased]
 
 ### Features
+- Secure PIN authentication foundation: Keystore-backed `EncryptedSharedPreferences` + PBKDF2
+  hashing (`SecureCredentialStore`), `AuthenticationManager`, platform bridge v3
+  (`authHasPin/authSetPin/authVerifyPin/authClearPin`); Dart `PinFormatPolicy`, `LockoutPolicy`,
+  `AuthSessionManager`, `AuthenticationService` (unit-tested). New CI security checks
+  (`check_no_samsung.sh`, `check_secure_impl.sh`). minSdk raised to 23.
 - Android application discovery (launchable apps) with real icons, search, and
   user/system/all filtering.
 - Protected-app policy storage (local) via `ProtectedAppsRepository`.

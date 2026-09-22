@@ -61,6 +61,8 @@ jobs:
           bash scripts/validation/check_app_id.sh
           bash scripts/validation/check_permissions.sh
           bash scripts/validation/check_branding.sh
+          bash scripts/validation/check_no_samsung.sh
+          bash scripts/validation/check_secure_impl.sh
           bash scripts/validation/check_no_binaries.sh
 
       - name: Format, analyze & test

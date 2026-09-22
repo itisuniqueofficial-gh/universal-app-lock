@@ -26,6 +26,12 @@ jobs:
       - name: Forbidden privileged permissions
         run: bash scripts/validation/check_permissions.sh
 
+      - name: No Samsung/privileged references
+        run: bash scripts/validation/check_no_samsung.sh
+
+      - name: Secure implementation checks
+        run: bash scripts/validation/check_secure_impl.sh
+
       - name: Scan for hardcoded secrets (heuristic)
         run: |
           set -euo pipefail

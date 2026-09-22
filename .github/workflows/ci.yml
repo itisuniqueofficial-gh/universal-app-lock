@@ -26,6 +26,10 @@ jobs:
         run: bash scripts/validation/check_permissions.sh
       - name: Branding
         run: bash scripts/validation/check_branding.sh
+      - name: No Samsung/privileged references
+        run: bash scripts/validation/check_no_samsung.sh
+      - name: Secure implementation checks
+        run: bash scripts/validation/check_secure_impl.sh
       - name: No committed binaries/secrets
         run: bash scripts/validation/check_no_binaries.sh
       - name: Version metadata

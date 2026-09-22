@@ -45,4 +45,26 @@ class FakePlatformService extends PlatformService {
 
   @override
   Future<String> getBiometricAvailability() async => biometric;
+
+  // --- Auth (in-memory, for tests) -----------------------------------------
+  String? storedPin;
+
+  @override
+  Future<bool> authHasPin() async => storedPin != null;
+
+  @override
+  Future<bool> authSetPin(String pin) async {
+    storedPin = pin;
+    return true;
+  }
+
+  @override
+  Future<bool> authVerifyPin(String pin) async =>
+      storedPin != null && pin == storedPin;
+
+  @override
+  Future<bool> authClearPin() async {
+    storedPin = null;
+    return true;
+  }
 }
