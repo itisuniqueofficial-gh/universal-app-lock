@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../repositories/protected_apps_repository.dart';
+import '../../services/platform/platform_service.dart';
 import '../about/about_screen.dart';
+import '../apps/protected_apps_screen.dart';
+import '../permissions/security_permissions_screen.dart';
 
-/// Minimal settings screen scaffold.
-///
-/// Real settings (lock policy, authentication method, protected apps) are NOT
-/// implemented in this phase. This screen intentionally contains no functional
-/// toggles so it does not imply behavior that does not exist yet.
+/// Settings hub. Every entry navigates to a functional screen; there are no
+/// non-functional toggles or placeholders.
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({
+    super.key,
+    required this.platform,
+    required this.repository,
+  });
+
+  final PlatformService platform;
+  final ProtectedAppsRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -16,14 +24,33 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          const ListTile(
-            leading: Icon(Icons.info_outline_rounded),
-            title: Text('Settings are not implemented yet'),
-            subtitle: Text(
-              'Lock policy and preferences arrive in a later phase.',
+          ListTile(
+            leading: const Icon(Icons.shield_outlined),
+            title: const Text('Security & Permissions'),
+            subtitle: const Text('PIN, permissions and security status'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SecurityPermissionsScreen(platform: platform),
+              ),
             ),
           ),
-          const Divider(),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.apps_outlined),
+            title: const Text('Protected Applications'),
+            subtitle: const Text('Choose which apps to protect'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ProtectedAppsScreen(
+                  platform: platform,
+                  repository: repository,
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: const Text('About & Credits'),

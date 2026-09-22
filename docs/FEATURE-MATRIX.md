@@ -21,6 +21,7 @@ Status legend: **Implemented** (code complete) · **CI-tested** (unit-tested in 
 | Auth session / relock timing | Implemented + CI-tested | — | — | `AuthSessionManager` (Dart) | Unit tests | Not yet wired to enforcement |
 | Secure PIN storage | Implemented + Compile-verified | Keystore, `EncryptedSharedPreferences`, PBKDF2 | — | `SecureCredentialStore.kt` | — | Not device-tested; needs API 23+ |
 | PIN auth (set/verify/clear) | Implemented + Compile-verified | — | — | `AuthenticationManager.kt` + bridge v3 | Dart service unit-tested with fake | Native path not device-tested |
+| PIN setup/change/remove UI | Implemented + CI-tested | — | — | `PinEntryScreen` + `PinFlows` + Security screen | keypad + flow widget tests | Not device-tested |
 | Biometric availability probe | Implemented + Compile-verified | `KeyguardManager`, PackageManager features | — | `AuthenticationManager.kt` | — | Informational only |
 | BiometricPrompt auth | Planned | `androidx.biometric` | `USE_BIOMETRIC` | — | — | Next branch |
 | Foreground monitoring | Planned | `UsageStatsManager.queryEvents` | `PACKAGE_USAGE_STATS` | — | — | Android detection limits apply |

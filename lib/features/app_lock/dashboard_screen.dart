@@ -77,7 +77,12 @@ class _DashboardScreenState extends State<DashboardScreen>
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => _push(const SettingsScreen()),
+            onPressed: () => _push(
+              SettingsScreen(
+                platform: widget.platform,
+                repository: widget.repository,
+              ),
+            ),
           ),
         ],
       ),
@@ -104,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'App-lock enforcement is not implemented yet.',
+                  'On-device lock enforcement is not active in this build.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
