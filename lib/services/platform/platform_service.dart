@@ -137,8 +137,8 @@ class PlatformService {
 
   Future<bool> setRelockPolicy({int? relockTimeoutMs, bool? lockOnScreenOff}) =>
       _invoke<bool>(PlatformMethods.setRelockPolicy, {
-        if (relockTimeoutMs != null) 'relockTimeoutMs': relockTimeoutMs,
-        if (lockOnScreenOff != null) 'lockOnScreenOff': lockOnScreenOff,
+        'relockTimeoutMs': ?relockTimeoutMs,
+        'lockOnScreenOff': ?lockOnScreenOff,
       });
 
   // --- Events ---------------------------------------------------------------
