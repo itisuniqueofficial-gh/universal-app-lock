@@ -1,0 +1,155 @@
+name: Every-Commit Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only what is needed to publish a prerelease.
+permissions:
+  contents: write
+
+concurrency:
+  group: every-commit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-build:
+    name: Build & publish commit prerelease
+    runs-on: ubuntu-latest
+    env:
+      CHANNEL: build
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Compute version identity
+        id: ver
+        run: bash scripts/version/compute_version.sh VERSION
+
+      - run: flutter pub get
+
+      - name: Format check
+        run: |
+          dart format lib test
+          if ! git diff --quiet -- '*.dart'; then
+            echo "::error::Dart code is not formatted."
+            git --no-pager diff -- '*.dart'
+            exit 1
+          fi
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test
+
+      - name: Repository validation
+        run: |
+          bash scripts/validation/check_app_id.sh
+          bash scripts/validation/check_permissions.sh
+          bash scripts/validation/check_branding.sh
+          bash scripts/validation/check_no_binaries.sh
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
+      - name: Build APKs (universal + per-ABI) and AAB
+        run: |
+          set -euo pipefail
+          VN='${{ steps.ver.outputs.version_name }}'
+          VC='${{ steps.ver.outputs.version_code }}'
+          flutter build apk --release --build-name="$VN" --build-number="$VC"
+          flutter build apk --release --split-per-abi --build-name="$VN" --build-number="$VC"
+          flutter build appbundle --release --build-name="$VN" --build-number="$VC"
+
+      - name: Stage & name artifacts
+        id: stage
+        run: |
+          set -euo pipefail
+          base="Universal-App-Lock-v${{ steps.ver.outputs.version }}-build-${{ github.run_number }}"
+          mkdir -p dist
+          apk=build/app/outputs/flutter-apk
+          cp "$apk/app-release.apk" "dist/${base}-universal.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            if [[ -f "$apk/app-${abi}-release.apk" ]]; then
+              cp "$apk/app-${abi}-release.apk" "dist/${base}-${abi}.apk"
+            fi
+          done
+          cp build/app/outputs/bundle/release/app-release.aab "dist/${base}.aab"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "Staged artifacts:"; ls -la dist
+
+      - name: Verify APK application ID
+        run: bash scripts/validation/verify_apk.sh "dist/${{ steps.stage.outputs.base }}-universal.apk" com.itisuniqueofficial.ual
+
+      - name: Verify signatures (development/CI key for prereleases)
+        run: |
+          set -euo pipefail
+          for f in dist/*.apk dist/*.aab; do
+            bash scripts/release/verify_signing.sh "$f"
+          done
+
+      - name: Generate build metadata
+        env:
+          OUT: dist/build-info.json
+          BASE_VERSION: ${{ steps.ver.outputs.version }}
+          VERSION_NAME: ${{ steps.ver.outputs.version_name }}
+          VERSION_CODE: ${{ steps.ver.outputs.version_code }}
+          COMMIT: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          WORKFLOW: ${{ github.workflow }}
+          SIGNED: "false"
+          BUILD_STATUS: success
+        run: bash scripts/release/build_info.sh
+
+      - name: Generate changelog
+        run: |
+          mkdir -p release
+          bash scripts/changelog/generate_changelog.sh --out release/CHANGELOG.md
+          cp release/CHANGELOG.md dist/CHANGELOG.md
+
+      - name: Generate checksums
+        run: bash scripts/release/checksums.sh dist/SHA256SUMS.txt dist/*.apk dist/*.aab dist/build-info.json
+
+      - name: Generate release notes
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          COMMIT: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          AUTHOR: ${{ github.actor }}
+          VERSION_NAME: ${{ steps.ver.outputs.version_name }}
+          APP_ID_STATUS: "verified (com.itisuniqueofficial.ual)"
+          TEST_STATUS: "passed on CI"
+          SIGNING_STATUS: "development/CI key (not production)"
+          CHANGELOG_FILE: release/CHANGELOG.md
+        run: bash scripts/release/commit_release_notes.sh > dist/RELEASE_NOTES.md
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.base }}
+          path: dist/**
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Publish GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.release_tag }}
+          name: ${{ steps.ver.outputs.release_name }}
+          body_path: dist/RELEASE_NOTES.md
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.apk
+            dist/*.aab
+            dist/SHA256SUMS.txt
+            dist/CHANGELOG.md
+            dist/build-info.json

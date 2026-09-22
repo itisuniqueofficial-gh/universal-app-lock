@@ -7,8 +7,9 @@ on:
         description: "Also build an (unsigned) AAB"
         type: boolean
         default: false
-  push:
-    branches: [main]
+
+# NOTE: push-to-main builds are handled by every-commit-release.yml. This
+# workflow is a manual/dispatch-only development build.
 
 permissions:
   contents: read
