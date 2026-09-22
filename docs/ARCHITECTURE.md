@@ -53,26 +53,32 @@ lib/
 ├── core/
 │   ├── constants/   # AppInfo (branding/attribution)
 │   ├── errors/      # PlatformBridgeException
-│   ├── models/      # PlatformInfo, AppVersion
-│   └── utils/       # AppTheme
+│   ├── models/      # PlatformInfo, AppInfo, PermissionStatus/PermissionInfo, AppSettings
+│   ├── utils/       # AppTheme (dark minimalist)
+│   └── widgets/     # FlatCard
 ├── features/
-│   ├── app_lock/    # DashboardScreen (home)
+│   ├── app_lock/    # DashboardScreen (real state)
 │   ├── authentication/  # PLANNED (reference LockMethod enum only)
-│   ├── apps/            # PLANNED (protected apps)
+│   ├── apps/            # ProtectedAppsScreen, app_filter, widgets/AppIcon
+│   ├── permissions/     # PermissionSetupScreen
 │   ├── settings/    # SettingsScreen (minimal)
 │   └── about/       # AboutScreen (credits/attribution)
+├── repositories/    # KeyValueStore (abstraction) + ProtectedAppsRepository
 ├── services/
 │   ├── platform/    # PlatformService (Dart facade over the bridge)
-│   └── channels/    # PlatformChannels (channel name/version constants)
+│   └── channels/    # PlatformChannels + PlatformMethods
 └── main.dart
 ```
 
 ### Platform bridge (the boundary)
 - **MethodChannel** `com.itisuniqueofficial.ual/platform` — request/response.
 - **EventChannel** `com.itisuniqueofficial.ual/platform_events` — native → Dart stream.
-- Versioned via `BRIDGE_VERSION` (Kotlin) / `PlatformChannels.bridgeVersion` (Dart).
-- **Phase 5 surface is diagnostic-only:** `getBridgeVersion`, `getAndroidSdk`,
-  `getPlatformInfo`, `getAppVersion`. No privileged or security methods are exposed.
+- Versioned via `BRIDGE_VERSION` (Kotlin) / `PlatformChannels.bridgeVersion` (Dart). Currently **v2**.
+- **Phase 6 surface:** diagnostics (`getBridgeVersion`, `getAndroidSdk`, `getPlatformInfo`,
+  `getAppVersion`); discovery (`getInstalledApplications`, `getApplicationIcon`); permissions
+  (`isUsageAccessGranted`, `openUsageAccessSettings`, `isOverlayPermissionGranted`,
+  `openOverlaySettings`, `getBiometricAvailability`). No enforcement/monitoring/auth methods.
+  Heavy calls (discovery, icons) run on a background thread and reply on the main thread.
 
 ### Kotlin Android (security-critical layer)
 Package root `com.itisuniqueofficial.ual`:
@@ -80,7 +86,10 @@ Package root `com.itisuniqueofficial.ual`:
 | Component | Package | Status |
 |---|---|---|
 | `MainActivity` | `.` | Implemented (hosts Flutter + registers bridge) |
-| `PlatformBridge` | `.platform` | Implemented (diagnostic-only) |
+| `PlatformBridge` | `.platform` | Implemented (v2: diagnostics + discovery + permissions) |
+| `ApplicationDiscoveryManager` | `.platform` | Implemented (launcher-query enumeration + icons) |
+| `UsageAccessManager` | `.platform` | Implemented (detect + open settings) |
+| `OverlayPermissionManager` | `.platform` | Implemented (detect + open settings) |
 | `PlatformAdapter` | `.platform` | **PLANNED** — interface stub |
 | `ApplicationMonitor` | `.platform` | **PLANNED** — interface stub |
 | `AuthenticationManager` | `.platform` | **PLANNED** — interface stub |

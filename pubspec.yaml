@@ -35,6 +35,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Local (on-device) key/value persistence for the protected-apps policy and
+  # settings. No remote/cloud storage is used.
+  shared_preferences: ^2.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

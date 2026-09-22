@@ -1,38 +1,47 @@
 # Features — Universal App Lock
 
-> Status legend: ✅ implemented · 🧱 scaffold/stub only · 🕒 planned (not started)
+> Status legend: ✅ implemented & verified on CI · 🧱 scaffold/stub only · 🕒 planned (not started)
 >
-> This file is maintained conservatively. A feature is only marked ✅ when it has
-> been implemented **and** verified. App-lock functionality is **not** implemented yet.
+> This file is conservative: a feature is only ✅ when implemented **and** verified by
+> GitHub Actions. App-lock **enforcement** is not implemented yet.
 
-## Current phase: 5 — Repository hygiene & Flutter/Kotlin scaffold
+## Current phase: 6 — Application discovery & permission onboarding
 
-### Implemented in this phase
+### Implemented
 | Feature | Status | Notes |
 |---|---|---|
-| Flutter Android app scaffold | ✅ | `com.itisuniqueofficial.ual`, label "Universal App Lock" |
-| Branding & attribution | ✅ | Centralized in `AppInfo`; shown on About screen |
-| About / Credits screen | ✅ | Includes required Samsung non-affiliation notice |
-| Dashboard (home) screen | ✅ | Branding + status + diagnostics; performs no locking |
-| Minimal Settings screen | ✅ | Navigation only; no functional toggles |
-| Platform bridge (diagnostics) | ✅ | `getBridgeVersion`, `getAndroidSdk`, `getPlatformInfo`, `getAppVersion` + a "ready" event |
-| Kotlin platform layer | 🧱 | Interfaces/stubs only; no security behavior |
-| Documentation set | ✅ | ARCHITECTURE, FEATURES, CREDITS, DEVELOPMENT, SECURITY, FORENSIC-ANALYSIS |
+| Android application discovery | ✅ | Launchable apps via PackageManager launcher query (no QUERY_ALL_PACKAGES) |
+| Application search | ✅ | Case-insensitive; matches name + package; filters a cached list (no per-keystroke PM queries) |
+| User / System / All filtering | ✅ | Uses `FLAG_SYSTEM`/`FLAG_UPDATED_SYSTEM_APP`, not hard-coded package names |
+| Real application icons | ✅ | Fetched lazily as PNG over the bridge, cached in-memory, graceful fallback |
+| Protected-app policy storage | ✅ | Local only; `ProtectedAppsRepository` over a storage abstraction |
+| Usage Access detection | ✅ | `AppOpsManager` op check |
+| Open Usage Access settings | ✅ | With package-scoped + fallback intents |
+| Overlay permission detection | ✅ | `Settings.canDrawOverlays` |
+| Open overlay settings | ✅ | With fallback intents |
+| Biometric availability (info only) | ✅ | Capability probe; no authentication performed |
+| Permission onboarding screen | ✅ | Real status; opens settings; refreshes on resume |
+| Dashboard real state | ✅ | Protection "Not set up"; protected count; permissions-to-grant count |
+| Permission state model | ✅ | `PermissionStatus` enum (granted/denied/unavailable/notRequired/unknown) |
+| Central settings model | 🧱 | `AppSettings` foundation persisted locally; no user-editable toggles yet |
+| Platform bridge v2 | ✅ | Single channel; discovery + permission methods; background execution |
 
-### Deliberately NOT implemented yet
-| Feature | Status | Target phase |
+### Selecting an app for protection
+Adding an app only records it in the **local protection policy**. It does **not** lock or
+intercept the app. Enforcement arrives in a later phase.
+
+### NOT yet implemented
+| Feature | Status | Target |
 |---|---|---|
-| Foreground-app monitoring | 🕒 | Phase 6+ (UsageStats) |
-| Lock overlay enforcement | 🕒 | Phase 6+ (foreground service + overlay) |
-| PIN authentication | 🕒 | Phase 6+ |
-| Biometric authentication | 🕒 | Phase 6+ (BiometricPrompt) |
-| Protected-apps selection & storage | 🕒 | Phase 6+ (PackageManager + encrypted storage) |
-| Boot handling | 🕒 | Phase 6+ |
-| Secure storage (Keystore) | 🕒 | Phase 6+ |
-| Icon generation pipeline | 🕒 | later phase (`icons/icon.png` is the master) |
-| Release automation (APK/AAB/signing) | 🕒 | Phase 12 |
+| Foreground monitoring | 🕒 | Phase 7 |
+| App-lock enforcement | 🕒 | Phase 7 |
+| Lock overlay UI | 🕒 | Phase 7 |
+| PIN authentication | 🕒 | Phase 7 |
+| Biometric authentication | 🕒 | Phase 7 |
+| Lock session / re-lock | 🕒 | Phase 7 |
+| Boot recovery | 🕒 | Phase 7+ |
+| Release automation to production | 🕒 | needs signing secrets (Phase 12) |
 
 ## Out of scope (from S Secure, intentionally dropped)
-- Secure Wi-Fi (Opera Max engine), Samsung Analytics/Push/DiagMon, SemFloatingFeature,
-  Galaxy Store update flow, and all Samsung privileged/system behavior.
-  Rationale in `FORENSIC-ANALYSIS.md`.
+Secure Wi-Fi (Opera Max), Samsung Analytics/Push/DiagMon, SemFloatingFeature, Galaxy Store
+update flow, and all Samsung privileged/system behavior. Rationale in `FORENSIC-ANALYSIS.md`.
